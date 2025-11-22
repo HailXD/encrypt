@@ -537,8 +537,8 @@ function resetUiState() {
   clearImagePreview();
   renderEncryptSelectionList([]);
   renderFileList([]);
-  setStatus("Ready. Uses PBKDF2 + AES-GCM with your key locally.");
-  setFileStatus("File tool ready.");
+  setStatus("");
+  setFileStatus("");
   updateSizeReport();
 }
 

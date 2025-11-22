@@ -23,7 +23,6 @@
                         No servers, no storage.
                     </p>
                 </div>
-                <div class="badge">AES-GCM</div>
             </header>
 
             <main>
@@ -48,8 +47,10 @@
                         <button id="encrypt">Encrypt -></button>
                     </div>
                     <p class="hint">
-                        Key is optional; if blank anyone can decrypt. We derive
-                        an AES key with PBKDF2 and AES-GCM locally.
+                        Key is optional; if blank anyone can decrypt. Each run
+                        uses a fresh random salt and IV, so the same key can
+                        encrypt the same text multiple times and produce
+                        different outputs—all decryptable with that key.
                     </p>
                 </section>
 
@@ -73,7 +74,6 @@
                             image below.
                         </p>
                     </div>
-                    <div class="status" id="fileStatus">File tool ready.</div>
                 </div>
 
                 <div class="file-grid">
@@ -139,11 +139,7 @@
             </section>
 
             <footer>
-                <div class="status" id="status">Ready.</div>
-                <div class="tiny">
-                    Use the same key for decrypting. Format:
-                    base64(salt):base64(iv):base64(ciphertext).
-                </div>
+                <div class="status" id="status"></div>
             </footer>
         </div>
 
