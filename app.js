@@ -507,12 +507,80 @@ function resetUiState() {
   updateSizeReport();
 }
 
+function assignFilesToInput(inputEl, files) {
+  const dataTransfer = new DataTransfer();
+  files.forEach(file => dataTransfer.items.add(file));
+  inputEl.files = dataTransfer.files;
+  inputEl.dispatchEvent(new Event("change", { bubbles: true }));
+}
+
+function setupDropZone(zoneEl, onFiles) {
+  if (!zoneEl) return;
+
+  const setDragging = isDragging => zoneEl.classList.toggle("dragging", isDragging);
+
+  ["dragenter", "dragover"].forEach(evt => {
+    zoneEl.addEventListener(evt, event => {
+      event.preventDefault();
+      event.stopPropagation();
+      setDragging(true);
+      if (event.dataTransfer) event.dataTransfer.dropEffect = "copy";
+    });
+  });
+
+  ["dragleave", "dragend"].forEach(evt => {
+    zoneEl.addEventListener(evt, event => {
+      event.preventDefault();
+      event.stopPropagation();
+      setDragging(false);
+    });
+  });
+
+  zoneEl.addEventListener("drop", event => {
+    event.preventDefault();
+    event.stopPropagation();
+    setDragging(false);
+    const files = Array.from(event.dataTransfer?.files || []);
+    if (files.length) onFiles(files);
+  });
+}
+
+function isTextInput(el) {
+  if (!el) return false;
+  if (el.tagName === "TEXTAREA") return true;
+  if (el.tagName === "INPUT") {
+    const type = (el.type || "text").toLowerCase();
+    return ["text", "search", "password", "email", "url", "tel", "number"].includes(type);
+  }
+  return false;
+}
+
 document.getElementById("encrypt").addEventListener("click", encrypt);
 document.getElementById("decrypt").addEventListener("click", decrypt);
 fileInput.addEventListener("change", handleEncryptSelectionChange);
 encryptFilesBtn.addEventListener("click", encryptFilesToImage);
 decryptImageBtn.addEventListener("click", decryptImage);
 downloadAllBtn.addEventListener("click", downloadAllZip);
+
+setupDropZone(encryptCard, files => assignFilesToInput(fileInput, files));
+setupDropZone(decryptCard, files => {
+  const imageFile = files.find(file => file.type.startsWith("image/"));
+  if (imageFile) assignFilesToInput(imageInput, [imageFile]);
+});
+
+window.addEventListener("paste", event => {
+  const files = Array.from(event.clipboardData?.files || []);
+  if (!files.length) return;
+  if (isTextInput(event.target)) return;
+
+  const imageFile = files.find(file => file.type.startsWith("image/"));
+  if (files.length === 1 && imageFile) {
+    assignFilesToInput(imageInput, [imageFile]);
+  } else {
+    assignFilesToInput(fileInput, files);
+  }
+  event.preventDefault();
+});
 
 window.addEventListener("pageshow", () => {
   resetUiState();
