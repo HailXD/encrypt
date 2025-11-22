@@ -1,6 +1,7 @@
 const plainEl = document.getElementById("plain");
 const cipherEl = document.getElementById("cipher");
 const keyEl = document.getElementById("key");
+const toastContainer = document.getElementById("toastContainer");
 
 const fileInput = document.getElementById("fileInput");
 const encryptFilesBtn = document.getElementById("encryptFiles");
@@ -26,9 +27,54 @@ const LEGACY_MARKERS = ["ENCJPEG::DATA::"];
 const SALT_LEN = 16;
 const IV_LEN = 12;
 const ACCEPTED_IMAGE_TYPES = ["image/png", "image/jpeg"];
+const TOAST_DURATION = 4000;
 
 let currentImageUrl = null;
 let currentFiles = [];
+
+function getToastLabel(type) {
+  switch (type) {
+    case "success":
+      return "Success";
+    case "error":
+      return "Error";
+    case "warn":
+      return "Heads up";
+    default:
+      return "Info";
+  }
+}
+
+function dismissToast(toastEl) {
+  if (!toastEl || toastEl.classList.contains("dismiss")) return;
+  toastEl.classList.add("dismiss");
+  setTimeout(() => toastEl.remove(), 160);
+}
+
+function showToast(message, { type = "info", label } = {}) {
+  if (!toastContainer) return;
+  const toast = document.createElement("div");
+  toast.className = `toast ${type}`;
+
+  const labelEl = document.createElement("div");
+  labelEl.className = "label";
+  labelEl.textContent = label || getToastLabel(type);
+
+  const messageEl = document.createElement("div");
+  messageEl.className = "message";
+  messageEl.textContent = message;
+
+  const closeBtn = document.createElement("button");
+  closeBtn.type = "button";
+  closeBtn.setAttribute("aria-label", "Dismiss notification");
+  closeBtn.textContent = "×";
+  closeBtn.addEventListener("click", () => dismissToast(toast));
+
+  toast.append(labelEl, messageEl, closeBtn);
+  toastContainer.appendChild(toast);
+
+  setTimeout(() => dismissToast(toast), TOAST_DURATION);
+}
 
 function updateSizeReport(inputBytes = 0, outputBytes = 0) {
   if (!sizeReportEl) return;
@@ -93,6 +139,7 @@ async function encrypt() {
   const text = plainEl.value;
 
   if (!text) {
+    showToast("Enter text to encrypt.", { type: "warn" });
     plainEl.focus();
     return;
   }
@@ -114,8 +161,10 @@ async function encrypt() {
     ].join(":");
 
     cipherEl.value = output;
+    showToast("Text encrypted.", { type: "success", label: "Encrypted" });
   } catch (err) {
     console.error(err);
+    showToast("Encryption failed.", { type: "error" });
   }
 }
 
@@ -125,6 +174,7 @@ async function decrypt() {
 
   const parts = cipherText.split(":");
   if (parts.length !== 3) {
+    showToast("Cipher text looks invalid.", { type: "warn" });
     cipherEl.focus();
     return;
   }
@@ -143,8 +193,10 @@ async function decrypt() {
     );
 
     plainEl.value = textDecoder.decode(decrypted);
+    showToast("Text decrypted.", { type: "success", label: "Decrypted" });
   } catch (err) {
     console.error(err);
+    showToast("Incorrect key or corrupted data.", { type: "error" });
   }
 }
 
@@ -361,6 +413,7 @@ async function encryptFilesToImage() {
   const files = Array.from(fileInput.files || []);
 
   if (!files.length) {
+    showToast("Select files to encrypt first.", { type: "warn" });
     fileInput.focus();
     return;
   }
@@ -383,9 +436,14 @@ async function encryptFilesToImage() {
     const imageBlob = await payloadToPng(payload);
     setImageOutputs(imageBlob);
     updateSizeReport(totalInputBytes, imageBlob.size);
+    showToast(`Encrypted ${files.length} file${files.length === 1 ? "" : "s"} to PNG.`, {
+      type: "success",
+      label: "Encrypted"
+    });
   } catch (err) {
     console.error(err);
     updateSizeReport();
+    showToast("File encryption failed.", { type: "error" });
   }
 }
 
@@ -394,6 +452,7 @@ async function decryptImage() {
   const file = imageInput.files?.[0];
 
   if (!file) {
+    showToast("Choose an image to decrypt.", { type: "warn" });
     imageInput.focus();
     return;
   }
@@ -414,9 +473,14 @@ async function decryptImage() {
     const files = unpackFiles(new Uint8Array(decrypted));
 
     renderFileList(files);
+    showToast(`Decrypted ${files.length} file${files.length === 1 ? "" : "s"}.`, {
+      type: "success",
+      label: "Decrypted"
+    });
   } catch (err) {
     console.error(err);
     renderFileList([]);
+    showToast("Incorrect key or invalid image.", { type: "error" });
   }
 }
 
