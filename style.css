@@ -134,12 +134,6 @@ button {
   transition: transform 0.1s ease, box-shadow 0.2s;
 }
 
-button#encrypt {
-  background: linear-gradient(120deg, var(--accent), var(--accent-2));
-  color: #0d1020;
-  box-shadow: 0 12px 30px rgba(88, 241, 193, 0.35);
-}
-
 button#decrypt {
   background: transparent;
   color: var(--text);
@@ -196,6 +190,11 @@ button:active {
   display: flex;
   flex-direction: column;
   gap: 10px;
+}
+
+.file-card.dragging {
+  border-color: var(--accent);
+  background: rgba(88, 241, 193, 0.06);
 }
 
 .download-link {
