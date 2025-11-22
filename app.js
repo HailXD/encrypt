@@ -537,8 +537,8 @@ function resetUiState() {
   clearImagePreview();
   renderEncryptSelectionList([]);
   renderFileList([]);
-  setStatus("");
-  setFileStatus("");
+  setStatus("Ready. Encrypts locally with your key.");
+  setFileStatus("File tool ready.");
   updateSizeReport();
 }
 
