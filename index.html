@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Client-Side Encryptor</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="shell">
+    <header>
+      <div>
+        <p class="eyebrow">Client-side only</p>
+        <h1>Encrypt & Decrypt</h1>
+        <p class="lede">Type text, pick a password, and convert it to encrypted text. No servers, no storage.</p>
+      </div>
+      <div class="badge">AES-GCM</div>
+    </header>
+
+    <main>
+      <section class="panel">
+        <label for="plain">Unencrypted text</label>
+        <textarea id="plain" placeholder="Enter plain text here..."></textarea>
+      </section>
+
+      <section class="panel stack">
+        <label for="password">Password</label>
+        <input id="password" type="password" placeholder="Choose a strong passphrase" autocomplete="off">
+        <div class="actions">
+          <button id="encrypt">Encrypt ➜</button>
+          <button id="decrypt" class="ghost">Decrypt ➜</button>
+        </div>
+        <p class="hint">We derive an AES key from your password with PBKDF2; nothing leaves the page.</p>
+      </section>
+
+      <section class="panel">
+        <label for="cipher">Encrypted text</label>
+        <textarea id="cipher" placeholder="Encrypted output will appear here..."></textarea>
+      </section>
+    </main>
+
+    <footer>
+      <div class="status" id="status">Ready.</div>
+      <div class="tiny">Use the same password for decrypting. Format: base64(salt):base64(iv):base64(ciphertext).</div>
+    </footer>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
