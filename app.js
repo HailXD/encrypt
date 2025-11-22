@@ -13,6 +13,7 @@ const decryptImageBtn = document.getElementById("decryptImage");
 const fileListEl = document.getElementById("fileList");
 const downloadAllBtn = document.getElementById("downloadAll");
 const encryptSelectionListEl = document.getElementById("encryptSelectionList");
+const sizeReportEl = document.getElementById("sizeReport");
 
 const textEncoder = new TextEncoder();
 const textDecoder = new TextDecoder();
@@ -34,6 +35,24 @@ function setStatus(message, isError = false) {
 function setFileStatus(message, isError = false) {
   fileStatusEl.textContent = message;
   fileStatusEl.style.color = isError ? "#ff9e9e" : "#a2f7d8";
+}
+
+function updateSizeReport(inputBytes = 0, outputBytes = 0) {
+  if (!sizeReportEl) return;
+  if (!inputBytes || !outputBytes) {
+    sizeReportEl.textContent = "No size comparison yet.";
+    sizeReportEl.style.color = "var(--muted)";
+    sizeReportEl.classList.add("empty");
+    return;
+  }
+
+  const diff = outputBytes - inputBytes;
+  const pct = inputBytes ? (diff / inputBytes) * 100 : 0;
+  const pctText = `${diff >= 0 ? "+" : ""}${pct.toFixed(1)}%`;
+
+  sizeReportEl.textContent = `Input: ${formatBytes(inputBytes)} -> Output: ${formatBytes(outputBytes)} (${pctText})`;
+  sizeReportEl.style.color = diff > 0 ? "#ff9e9e" : diff < 0 ? "#a2f7d8" : "#d5d8e7";
+  sizeReportEl.classList.remove("empty");
 }
 
 function bufferToBase64(buf) {
@@ -223,24 +242,28 @@ function unpackFiles(data) {
 }
 
 async function payloadToPng(payloadBytes) {
-  const width = 192;
-  const height = 144; // 4:3 ratio, small preview to keep PNG size down
+  const width = 12;
+  const height = 9; // tiny 4:3 canvas to keep PNG overhead low while still visible
 
   const canvas = document.createElement("canvas");
   canvas.width = width;
   canvas.height = height;
   const ctx = canvas.getContext("2d");
 
-  const gradient = ctx.createLinearGradient(0, 0, width, height);
-  gradient.addColorStop(0, "#101528");
-  gradient.addColorStop(1, "#1b2238");
-  ctx.fillStyle = gradient;
-  ctx.fillRect(0, 0, width, height);
+  const imageData = ctx.createImageData(width, height);
+  const pixels = imageData.data;
+  const len = payloadBytes.length || 1;
 
-  ctx.fillStyle = "rgba(88, 241, 193, 0.12)";
-  ctx.fillRect(0, 0, width, height / 3);
-  ctx.fillStyle = "rgba(144, 180, 255, 0.12)";
-  ctx.fillRect(0, height / 2, width, height / 2);
+  for (let p = 0; p < width * height; p++) {
+    const base = p * 4;
+    const idx = (p * 3) % len;
+    pixels[base] = payloadBytes[idx % len];
+    pixels[base + 1] = payloadBytes[(idx + 1) % len];
+    pixels[base + 2] = payloadBytes[(idx + 2) % len];
+    pixels[base + 3] = 255;
+  }
+
+  ctx.putImageData(imageData, 0, 0);
 
   const baseBlob = await new Promise(resolve => canvas.toBlob(resolve, "image/png"));
   if (!baseBlob) throw new Error("Unable to create PNG blob.");
@@ -348,6 +371,7 @@ async function encryptFilesToImage() {
     setFileStatus("Encrypting files...");
     const buffers = await Promise.all(files.map(f => f.arrayBuffer()));
     const packed = packFiles(files, buffers);
+    const totalInputBytes = files.reduce((sum, f) => sum + (f.size || 0), 0);
 
     const salt = crypto.getRandomValues(new Uint8Array(SALT_LEN));
     const iv = crypto.getRandomValues(new Uint8Array(IV_LEN));
@@ -364,9 +388,11 @@ async function encryptFilesToImage() {
     setFileStatus(
       `Encrypted ${files.length} file(s) into PNG (${formatBytes(imageBlob.size)})${password ? "" : " using no password."}`
     );
+    updateSizeReport(totalInputBytes, imageBlob.size);
   } catch (err) {
     console.error(err);
     setFileStatus("File encryption failed.", true);
+    updateSizeReport();
   }
 }
 
@@ -494,6 +520,7 @@ function resetUiState() {
   renderFileList([]);
   setStatus("Ready. Uses PBKDF2 + AES-GCM locally.");
   setFileStatus("File tool ready.");
+  updateSizeReport();
 }
 
 document.getElementById("encrypt").addEventListener("click", encrypt);

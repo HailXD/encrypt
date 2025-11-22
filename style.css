@@ -251,6 +251,20 @@ footer {
   pointer-events: none;
 }
 
+.size-report {
+  margin-top: 6px;
+  padding: 10px 12px;
+  border: 1px dashed var(--border);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.02);
+  color: var(--text);
+  font-size: 14px;
+}
+
+#sizeReport.empty {
+  color: var(--muted);
+}
+
 .preview-wrap {
   border: 1px dashed var(--border);
   border-radius: var(--radius);
