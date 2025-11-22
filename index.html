@@ -15,7 +15,7 @@
       <div>
         <p class="eyebrow">Client-side only</p>
         <h1>Encrypt & Decrypt</h1>
-        <p class="lede">Type text, pick a password, and convert it to encrypted text. No servers, no storage.</p>
+        <p class="lede">Type text, pick a key, and convert it to encrypted text. No servers, no storage.</p>
       </div>
       <div class="badge">AES-GCM</div>
     </header>
@@ -27,13 +27,13 @@
       </section>
 
       <section class="panel stack">
-        <label for="password">Password (optional)</label>
-        <input id="password" type="password" placeholder="Leave blank to encrypt with no password" autocomplete="off">
+        <label for="key">Key (optional)</label>
+        <input id="key" type="text" placeholder="Leave blank to encrypt with no key" autocomplete="off">
         <div class="actions">
           <button id="encrypt">Encrypt -></button>
           <button id="decrypt" class="ghost">Decrypt -></button>
         </div>
-        <p class="hint">Password is optional; if blank anyone can decrypt. We derive an AES key with PBKDF2 and AES-GCM locally.</p>
+        <p class="hint">Key is optional; if blank anyone can decrypt. We derive an AES key with PBKDF2 and AES-GCM locally.</p>
       </section>
 
       <section class="panel">
@@ -47,7 +47,7 @@
         <div>
           <p class="eyebrow">Files</p>
           <h2>Encrypt files into a PNG</h2>
-          <p class="hint">Pick files, optionally add a password, and download a PNG that hides the payload. Decrypt by uploading the image below.</p>
+          <p class="hint">Pick files, optionally add a key, and download a PNG that hides the payload. Decrypt by uploading the image below.</p>
         </div>
         <div class="status" id="fileStatus">File tool ready.</div>
       </div>
@@ -83,7 +83,7 @@
 
     <footer>
       <div class="status" id="status">Ready.</div>
-      <div class="tiny">Use the same password for decrypting. Format: base64(salt):base64(iv):base64(ciphertext).</div>
+      <div class="tiny">Use the same key for decrypting. Format: base64(salt):base64(iv):base64(ciphertext).</div>
     </footer>
   </div>
 

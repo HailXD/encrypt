@@ -1,6 +1,6 @@
 const plainEl = document.getElementById("plain");
 const cipherEl = document.getElementById("cipher");
-const passwordEl = document.getElementById("password");
+const keyEl = document.getElementById("key");
 const statusEl = document.getElementById("status");
 
 const fileInput = document.getElementById("fileInput");
@@ -74,10 +74,10 @@ function formatBytes(bytes) {
   return `${value.toFixed(value >= 10 ? 0 : 1)} ${units[index]}`;
 }
 
-async function deriveKey(password, salt) {
+async function deriveKey(keyText, salt) {
   const keyMaterial = await crypto.subtle.importKey(
     "raw",
-    textEncoder.encode(password),
+    textEncoder.encode(keyText),
     "PBKDF2",
     false,
     ["deriveKey"]
@@ -98,7 +98,7 @@ async function deriveKey(password, salt) {
 }
 
 async function encrypt() {
-  const password = passwordEl.value;
+  const keyText = keyEl.value;
   const text = plainEl.value;
 
   if (!text) {
@@ -110,7 +110,7 @@ async function encrypt() {
   try {
     const salt = crypto.getRandomValues(new Uint8Array(SALT_LEN));
     const iv = crypto.getRandomValues(new Uint8Array(IV_LEN));
-    const key = await deriveKey(password, salt);
+    const key = await deriveKey(keyText, salt);
     const encrypted = await crypto.subtle.encrypt(
       { name: "AES-GCM", iv },
       key,
@@ -125,9 +125,9 @@ async function encrypt() {
 
     cipherEl.value = output;
     setStatus(
-      password
+      keyText
         ? "Encrypted. Copy the full salt:iv:cipher string."
-        : "Encrypted with an empty password; anyone can decrypt."
+        : "Encrypted with an empty key; anyone can decrypt."
     );
   } catch (err) {
     console.error(err);
@@ -136,7 +136,7 @@ async function encrypt() {
 }
 
 async function decrypt() {
-  const password = passwordEl.value;
+  const keyText = keyEl.value;
   const cipherText = cipherEl.value.trim();
 
   const parts = cipherText.split(":");
@@ -152,7 +152,7 @@ async function decrypt() {
     const iv = new Uint8Array(base64ToBuffer(ivB64));
     const data = base64ToBuffer(cipherB64);
 
-    const key = await deriveKey(password, salt);
+    const key = await deriveKey(keyText, salt);
     const decrypted = await crypto.subtle.decrypt(
       { name: "AES-GCM", iv },
       key,
@@ -160,10 +160,10 @@ async function decrypt() {
     );
 
     plainEl.value = textDecoder.decode(decrypted);
-    setStatus("Decrypted. Keep your password safe.");
+    setStatus("Decrypted. Keep your key safe.");
   } catch (err) {
     console.error(err);
-    setStatus("Decryption failed. Check password or input.", true);
+    setStatus("Decryption failed. Check the key or input.", true);
   }
 }
 
@@ -377,7 +377,7 @@ function setImageOutputs(blob) {
 }
 
 async function encryptFilesToImage() {
-  const password = passwordEl.value;
+  const keyText = keyEl.value;
   const files = Array.from(fileInput.files || []);
 
   if (!files.length) {
@@ -394,7 +394,7 @@ async function encryptFilesToImage() {
 
     const salt = crypto.getRandomValues(new Uint8Array(SALT_LEN));
     const iv = crypto.getRandomValues(new Uint8Array(IV_LEN));
-    const key = await deriveKey(password, salt);
+    const key = await deriveKey(keyText, salt);
     const encrypted = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, packed);
 
     const payload = new Uint8Array(SALT_LEN + IV_LEN + encrypted.byteLength);
@@ -405,7 +405,7 @@ async function encryptFilesToImage() {
     const imageBlob = await payloadToPng(payload);
     setImageOutputs(imageBlob);
     setFileStatus(
-      `Encrypted ${files.length} file(s) into PNG (${formatBytes(imageBlob.size)})${password ? "" : " using no password."}`
+      `Encrypted ${files.length} file(s) into PNG (${formatBytes(imageBlob.size)})${keyText ? "" : " using no key."}`
     );
     updateSizeReport(totalInputBytes, imageBlob.size);
   } catch (err) {
@@ -416,7 +416,7 @@ async function encryptFilesToImage() {
 }
 
 async function decryptImage() {
-  const password = passwordEl.value;
+  const keyText = keyEl.value;
   const file = imageInput.files?.[0];
 
   if (!file) {
@@ -437,7 +437,7 @@ async function decryptImage() {
     const iv = payload.slice(SALT_LEN, SALT_LEN + IV_LEN);
     const cipher = payload.slice(SALT_LEN + IV_LEN);
 
-    const key = await deriveKey(password, salt);
+    const key = await deriveKey(keyText, salt);
     const decrypted = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, cipher);
     const files = unpackFiles(new Uint8Array(decrypted));
 
@@ -446,7 +446,7 @@ async function decryptImage() {
   } catch (err) {
     console.error(err);
     renderFileList([]);
-    setFileStatus("Decryption failed. Check the PNG or password.", true);
+    setFileStatus("Decryption failed. Check the PNG or key.", true);
   }
 }
 
@@ -531,13 +531,13 @@ function clearImagePreview() {
 function resetUiState() {
   plainEl.value = "";
   cipherEl.value = "";
-  passwordEl.value = "";
+  keyEl.value = "";
   fileInput.value = "";
   imageInput.value = "";
   clearImagePreview();
   renderEncryptSelectionList([]);
   renderFileList([]);
-  setStatus("Ready. Uses PBKDF2 + AES-GCM locally.");
+  setStatus("Ready. Uses PBKDF2 + AES-GCM with your key locally.");
   setFileStatus("File tool ready.");
   updateSizeReport();
 }
@@ -549,8 +549,8 @@ encryptFilesBtn.addEventListener("click", encryptFilesToImage);
 decryptImageBtn.addEventListener("click", decryptImage);
 downloadAllBtn.addEventListener("click", downloadAllZip);
 
-window.addEventListener("pageshow", event => {
-  if (event.persisted) resetUiState();
+window.addEventListener("pageshow", () => {
+  resetUiState();
 });
 
 resetUiState();
