@@ -25,6 +25,7 @@ const EMBED_MARKER = "ENCPNG::DATA::";
 const LEGACY_MARKERS = ["ENCJPEG::DATA::"];
 const SALT_LEN = 16;
 const IV_LEN = 12;
+const ACCEPTED_IMAGE_TYPES = ["image/png", "image/jpeg"];
 
 let currentImageUrl = null;
 let currentFiles = [];
@@ -508,10 +509,19 @@ function resetUiState() {
 }
 
 function assignFilesToInput(inputEl, files) {
+  if (typeof DataTransfer === "undefined") return;
   const dataTransfer = new DataTransfer();
   files.forEach(file => dataTransfer.items.add(file));
   inputEl.files = dataTransfer.files;
   inputEl.dispatchEvent(new Event("change", { bubbles: true }));
+}
+
+function pickImageFile(files) {
+  return files.find(
+    file =>
+      ACCEPTED_IMAGE_TYPES.includes(file.type) ||
+      /\.(png|jpe?g)$/i.test(file.name || "")
+  );
 }
 
 function setupDropZone(zoneEl, onFiles) {
@@ -564,7 +574,7 @@ downloadAllBtn.addEventListener("click", downloadAllZip);
 
 setupDropZone(encryptCard, files => assignFilesToInput(fileInput, files));
 setupDropZone(decryptCard, files => {
-  const imageFile = files.find(file => file.type.startsWith("image/"));
+  const imageFile = pickImageFile(files);
   if (imageFile) assignFilesToInput(imageInput, [imageFile]);
 });
 
@@ -573,7 +583,7 @@ window.addEventListener("paste", event => {
   if (!files.length) return;
   if (isTextInput(event.target)) return;
 
-  const imageFile = files.find(file => file.type.startsWith("image/"));
+  const imageFile = pickImageFile(files);
   if (files.length === 1 && imageFile) {
     assignFilesToInput(imageInput, [imageFile]);
   } else {
