@@ -38,8 +38,15 @@ function generateDownloadBasename() {
   );
 }
 
+function baseNameFromFilename(name) {
+  if (!name) return "";
+  const lastDot = name.lastIndexOf(".");
+  return lastDot > 0 ? name.slice(0, lastDot) : name;
+}
+
 let currentImageUrl = null;
 let currentFiles = [];
+let currentDownloadBase = "";
 
 function getToastLabel(type) {
   switch (type) {
@@ -413,8 +420,8 @@ function setImageOutputs(blob) {
   currentImageUrl = URL.createObjectURL(blob);
   imagePreview.src = currentImageUrl;
   imagePreview.classList.add("has-image");
-  const downloadBase = generateDownloadBasename();
-  downloadImageLink.download = `${downloadBase}.png`;
+  currentDownloadBase = generateDownloadBasename();
+  downloadImageLink.download = `${currentDownloadBase}.png`;
   downloadImageLink.href = currentImageUrl;
   downloadImageLink.classList.remove("disabled");
 }
@@ -467,6 +474,8 @@ async function decryptImage() {
     imageInput.focus();
     return;
   }
+
+  currentDownloadBase = baseNameFromFilename(file.name) || generateDownloadBasename();
 
   try {
     const buffer = await file.arrayBuffer();
@@ -552,12 +561,15 @@ async function downloadAllZip() {
     console.error("JSZip failed to load; cannot zip files.");
     return;
   }
+  if (!currentDownloadBase) {
+    currentDownloadBase = generateDownloadBasename();
+  }
   const zip = new JSZip();
   currentFiles.forEach(file => {
     zip.file(file.name || "file.bin", file.data, { binary: true });
   });
   const blob = await zip.generateAsync({ type: "blob" });
-  downloadBlob(blob, `${generateDownloadBasename()}.zip`);
+  downloadBlob(blob, `${currentDownloadBase}.zip`);
 }
 
 function clearImagePreview() {
@@ -578,6 +590,7 @@ function resetUiState() {
   keyEl.value = "";
   fileInput.value = "";
   imageInput.value = "";
+  currentDownloadBase = "";
   clearImagePreview();
   renderEncryptSelectionList([]);
   renderFileList([]);
