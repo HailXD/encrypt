@@ -1,93 +1,153 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Client-Side Encryptor</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css">
-</head>
-<body>
-  <div class="shell">
-    <header>
-      <div>
-        <p class="eyebrow">Client-side only</p>
-        <h1>Encrypt & Decrypt</h1>
-        <p class="lede">Type text, pick a key, and convert it to encrypted text. No servers, no storage.</p>
-      </div>
-      <div class="badge">AES-GCM</div>
-    </header>
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Client-Side Encryptor</title>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+        <link
+            href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600&display=swap"
+            rel="stylesheet"
+        />
+        <link rel="stylesheet" href="style.css" />
+    </head>
+    <body>
+        <div class="shell">
+            <header>
+                <div>
+                    <p class="eyebrow">Client-side only</p>
+                    <h1>Encrypt & Decrypt</h1>
+                    <p class="lede">
+                        Type text, pick a key, and convert it to encrypted text.
+                        No servers, no storage.
+                    </p>
+                </div>
+                <div class="badge">AES-GCM</div>
+            </header>
 
-    <main>
-      <section class="panel">
-        <label for="plain">Unencrypted text</label>
-        <textarea id="plain" placeholder="Enter plain text here..."></textarea>
-      </section>
+            <main>
+                <section class="panel">
+                    <label for="plain">Unencrypted text</label>
+                    <textarea
+                        id="plain"
+                        placeholder="Enter plain text here..."
+                    ></textarea>
+                </section>
 
-      <section class="panel stack">
-        <label for="key">Key (optional)</label>
-        <input id="key" type="text" placeholder="Leave blank to encrypt with no key" autocomplete="off">
-        <div class="actions">
-          <button id="encrypt">Encrypt -></button>
-          <button id="decrypt" class="ghost"><- Decrypt</button>
+                <section class="panel stack">
+                    <label for="key">Key (optional)</label>
+                    <input
+                        id="key"
+                        type="text"
+                        placeholder="Leave blank to encrypt with no key"
+                        autocomplete="off"
+                    />
+                    <div class="actions">
+                        <button id="decrypt" class="ghost"><- Decrypt</button>
+                        <button id="encrypt">Encrypt -></button>
+                    </div>
+                    <p class="hint">
+                        Key is optional; if blank anyone can decrypt. We derive
+                        an AES key with PBKDF2 and AES-GCM locally.
+                    </p>
+                </section>
+
+                <section class="panel">
+                    <label for="cipher">Encrypted text</label>
+                    <textarea
+                        id="cipher"
+                        placeholder="Encrypted output will appear here..."
+                    ></textarea>
+                </section>
+            </main>
+
+            <section class="panel file-panel">
+                <div class="file-head">
+                    <div>
+                        <p class="eyebrow">Files</p>
+                        <h2>Encrypt files into a PNG</h2>
+                        <p class="hint">
+                            Pick files, optionally add a key, and download a PNG
+                            that hides the payload. Decrypt by uploading the
+                            image below.
+                        </p>
+                    </div>
+                    <div class="status" id="fileStatus">File tool ready.</div>
+                </div>
+
+                <div class="file-grid">
+                    <div class="file-card">
+                        <label for="fileInput"
+                            >Files to encrypt (multiple allowed)</label
+                        >
+                        <input id="fileInput" type="file" multiple />
+                        <details
+                            id="encryptSelectionDetails"
+                            class="file-collapse"
+                        >
+                            <summary id="encryptSelectionSummary">
+                                No files selected.
+                            </summary>
+                            <div
+                                id="encryptSelectionList"
+                                class="file-list empty"
+                            >
+                                No files selected.
+                            </div>
+                        </details>
+                        <button id="encryptFiles">Encrypt files to PNG</button>
+                        <a
+                            id="downloadImage"
+                            class="download-link disabled"
+                            href="#"
+                            download="encrypted.png"
+                            >Download PNG</a
+                        >
+                        <div id="sizeReport" class="size-report empty">
+                            No size comparison yet.
+                        </div>
+                        <div class="preview-wrap">
+                            <p class="hint">
+                                Preview of the encrypted PNG output.
+                            </p>
+                            <img
+                                id="imagePreview"
+                                alt="Encrypted image preview"
+                            />
+                        </div>
+                    </div>
+
+                    <div class="file-card">
+                        <label for="imageInput">Decrypt from image</label>
+                        <input
+                            id="imageInput"
+                            type="file"
+                            accept="image/png, image/jpeg"
+                        />
+                        <button id="decryptImage">Decrypt image</button>
+                        <div class="actions compact">
+                            <button id="downloadAll" class="ghost" disabled>
+                                Download all as .zip
+                            </button>
+                        </div>
+                        <div id="fileList" class="file-list empty">
+                            No files decrypted yet.
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <footer>
+                <div class="status" id="status">Ready.</div>
+                <div class="tiny">
+                    Use the same key for decrypting. Format:
+                    base64(salt):base64(iv):base64(ciphertext).
+                </div>
+            </footer>
         </div>
-        <p class="hint">Key is optional; if blank anyone can decrypt. We derive an AES key with PBKDF2 and AES-GCM locally.</p>
-      </section>
 
-      <section class="panel">
-        <label for="cipher">Encrypted text</label>
-        <textarea id="cipher" placeholder="Encrypted output will appear here..."></textarea>
-      </section>
-    </main>
-
-    <section class="panel file-panel">
-      <div class="file-head">
-        <div>
-          <p class="eyebrow">Files</p>
-          <h2>Encrypt files into a PNG</h2>
-          <p class="hint">Pick files, optionally add a key, and download a PNG that hides the payload. Decrypt by uploading the image below.</p>
-        </div>
-        <div class="status" id="fileStatus">File tool ready.</div>
-      </div>
-
-      <div class="file-grid">
-        <div class="file-card">
-          <label for="fileInput">Files to encrypt (multiple allowed)</label>
-          <input id="fileInput" type="file" multiple>
-          <details id="encryptSelectionDetails" class="file-collapse">
-            <summary id="encryptSelectionSummary">No files selected.</summary>
-            <div id="encryptSelectionList" class="file-list empty">No files selected.</div>
-          </details>
-          <button id="encryptFiles">Encrypt files to PNG</button>
-          <a id="downloadImage" class="download-link disabled" href="#" download="encrypted.png">Download PNG</a>
-          <div id="sizeReport" class="size-report empty">No size comparison yet.</div>
-          <div class="preview-wrap">
-            <p class="hint">Preview of the encrypted PNG output.</p>
-            <img id="imagePreview" alt="Encrypted image preview">
-          </div>
-        </div>
-
-        <div class="file-card">
-          <label for="imageInput">Decrypt from image</label>
-          <input id="imageInput" type="file" accept="image/png, image/jpeg">
-          <button id="decryptImage">Decrypt image</button>
-          <div class="actions compact">
-            <button id="downloadAll" class="ghost" disabled>Download all as .zip</button>
-          </div>
-          <div id="fileList" class="file-list empty">No files decrypted yet.</div>
-        </div>
-      </div>
-    </section>
-
-    <footer>
-      <div class="status" id="status">Ready.</div>
-      <div class="tiny">Use the same key for decrypting. Format: base64(salt):base64(iv):base64(ciphertext).</div>
-    </footer>
-  </div>
-
-  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
-  <script src="app.js"></script>
-</body>
+        <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+        <script src="app.js"></script>
+    </body>
 </html>
