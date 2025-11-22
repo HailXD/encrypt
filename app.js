@@ -13,6 +13,8 @@ const decryptImageBtn = document.getElementById("decryptImage");
 const fileListEl = document.getElementById("fileList");
 const downloadAllBtn = document.getElementById("downloadAll");
 const encryptSelectionListEl = document.getElementById("encryptSelectionList");
+const encryptSelectionDetailsEl = document.getElementById("encryptSelectionDetails");
+const encryptSelectionSummaryEl = document.getElementById("encryptSelectionSummary");
 const sizeReportEl = document.getElementById("sizeReport");
 
 const textEncoder = new TextEncoder();
@@ -316,9 +318,26 @@ function extractPayloadFromImage(buffer) {
 }
 
 function renderEncryptSelectionList(files) {
+  const hasFiles = files.length > 0;
   encryptSelectionListEl.innerHTML = "";
-  encryptSelectionListEl.classList.toggle("empty", files.length === 0);
-  if (!files.length) {
+  encryptSelectionListEl.classList.toggle("empty", !hasFiles);
+  if (encryptSelectionDetailsEl) {
+    encryptSelectionDetailsEl.classList.toggle("empty", !hasFiles);
+    if (!hasFiles) {
+      encryptSelectionDetailsEl.open = false;
+    }
+  }
+
+  if (encryptSelectionSummaryEl) {
+    if (hasFiles) {
+      const totalBytes = files.reduce((sum, file) => sum + (file.size || 0), 0);
+      encryptSelectionSummaryEl.textContent = `${files.length} file${files.length === 1 ? "" : "s"} selected (${formatBytes(totalBytes)}); click to expand`;
+    } else {
+      encryptSelectionSummaryEl.textContent = "No files selected.";
+    }
+  }
+
+  if (!hasFiles) {
     encryptSelectionListEl.textContent = "No files selected.";
     return;
   }

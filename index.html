@@ -56,7 +56,10 @@
         <div class="file-card">
           <label for="fileInput">Files to encrypt (multiple allowed)</label>
           <input id="fileInput" type="file" multiple>
-          <div id="encryptSelectionList" class="file-list empty">No files selected.</div>
+          <details id="encryptSelectionDetails" class="file-collapse">
+            <summary id="encryptSelectionSummary">No files selected.</summary>
+            <div id="encryptSelectionList" class="file-list empty">No files selected.</div>
+          </details>
           <button id="encryptFiles">Encrypt files to PNG</button>
           <a id="downloadImage" class="download-link disabled" href="#" download="encrypted.png">Download PNG</a>
           <div id="sizeReport" class="size-report empty">No size comparison yet.</div>
