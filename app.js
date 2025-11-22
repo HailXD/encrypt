@@ -1,13 +1,11 @@
 const plainEl = document.getElementById("plain");
 const cipherEl = document.getElementById("cipher");
 const keyEl = document.getElementById("key");
-const statusEl = document.getElementById("status");
 
 const fileInput = document.getElementById("fileInput");
 const encryptFilesBtn = document.getElementById("encryptFiles");
 const downloadImageLink = document.getElementById("downloadImage");
 const imagePreview = document.getElementById("imagePreview");
-const fileStatusEl = document.getElementById("fileStatus");
 const imageInput = document.getElementById("imageInput");
 const decryptImageBtn = document.getElementById("decryptImage");
 const fileListEl = document.getElementById("fileList");
@@ -28,16 +26,6 @@ const IV_LEN = 12;
 
 let currentImageUrl = null;
 let currentFiles = [];
-
-function setStatus(message, isError = false) {
-  statusEl.textContent = message;
-  statusEl.style.color = isError ? "#ff9e9e" : "#a2f7d8";
-}
-
-function setFileStatus(message, isError = false) {
-  fileStatusEl.textContent = message;
-  fileStatusEl.style.color = isError ? "#ff9e9e" : "#a2f7d8";
-}
 
 function updateSizeReport(inputBytes = 0, outputBytes = 0) {
   if (!sizeReportEl) return;
@@ -102,7 +90,6 @@ async function encrypt() {
   const text = plainEl.value;
 
   if (!text) {
-    setStatus("Enter something to encrypt.", true);
     plainEl.focus();
     return;
   }
@@ -124,14 +111,8 @@ async function encrypt() {
     ].join(":");
 
     cipherEl.value = output;
-    setStatus(
-      keyText
-        ? "Encrypted. Copy the full salt:iv:cipher string."
-        : "Encrypted with an empty key; anyone can decrypt."
-    );
   } catch (err) {
     console.error(err);
-    setStatus("Encryption failed.", true);
   }
 }
 
@@ -141,7 +122,6 @@ async function decrypt() {
 
   const parts = cipherText.split(":");
   if (parts.length !== 3) {
-    setStatus("Encrypted text should be salt:iv:cipher (base64).", true);
     cipherEl.focus();
     return;
   }
@@ -160,10 +140,8 @@ async function decrypt() {
     );
 
     plainEl.value = textDecoder.decode(decrypted);
-    setStatus("Decrypted. Keep your key safe.");
   } catch (err) {
     console.error(err);
-    setStatus("Decryption failed. Check the key or input.", true);
   }
 }
 
@@ -364,7 +342,6 @@ function renderEncryptSelectionList(files) {
 function handleEncryptSelectionChange() {
   const files = Array.from(fileInput.files || []);
   renderEncryptSelectionList(files);
-  setFileStatus(files.length ? `Ready to encrypt ${files.length} file(s).` : "Choose files to encrypt.");
 }
 
 function setImageOutputs(blob) {
@@ -381,13 +358,11 @@ async function encryptFilesToImage() {
   const files = Array.from(fileInput.files || []);
 
   if (!files.length) {
-    setFileStatus("Choose files to encrypt.", true);
     fileInput.focus();
     return;
   }
 
   try {
-    setFileStatus("Encrypting files...");
     const buffers = await Promise.all(files.map(f => f.arrayBuffer()));
     const packed = packFiles(files, buffers);
     const totalInputBytes = files.reduce((sum, f) => sum + (f.size || 0), 0);
@@ -404,13 +379,9 @@ async function encryptFilesToImage() {
 
     const imageBlob = await payloadToPng(payload);
     setImageOutputs(imageBlob);
-    setFileStatus(
-      `Encrypted ${files.length} file(s) into PNG (${formatBytes(imageBlob.size)})${keyText ? "" : " using no key."}`
-    );
     updateSizeReport(totalInputBytes, imageBlob.size);
   } catch (err) {
     console.error(err);
-    setFileStatus("File encryption failed.", true);
     updateSizeReport();
   }
 }
@@ -420,13 +391,11 @@ async function decryptImage() {
   const file = imageInput.files?.[0];
 
   if (!file) {
-    setFileStatus("Select a PNG to decrypt.", true);
     imageInput.focus();
     return;
   }
 
   try {
-    setFileStatus("Reading PNG...");
     const buffer = await file.arrayBuffer();
     const payload = extractPayloadFromImage(buffer);
     if (payload.length < SALT_LEN + IV_LEN + 1) {
@@ -442,11 +411,9 @@ async function decryptImage() {
     const files = unpackFiles(new Uint8Array(decrypted));
 
     renderFileList(files);
-    setFileStatus(`Decrypted ${files.length} file(s) from PNG.`);
   } catch (err) {
     console.error(err);
     renderFileList([]);
-    setFileStatus("Decryption failed. Check the PNG or key.", true);
   }
 }
 
@@ -504,17 +471,15 @@ function downloadSingle(file) {
 async function downloadAllZip() {
   if (!currentFiles.length) return;
   if (typeof JSZip === "undefined") {
-    setFileStatus("JSZip failed to load; cannot zip files.", true);
+    console.error("JSZip failed to load; cannot zip files.");
     return;
   }
-  setFileStatus("Building zip...");
   const zip = new JSZip();
   currentFiles.forEach(file => {
     zip.file(file.name || "file.bin", file.data, { binary: true });
   });
   const blob = await zip.generateAsync({ type: "blob" });
   downloadBlob(blob, "files.zip");
-  setFileStatus("Zip ready.");
 }
 
 function clearImagePreview() {
@@ -537,8 +502,6 @@ function resetUiState() {
   clearImagePreview();
   renderEncryptSelectionList([]);
   renderFileList([]);
-  setStatus("Ready. Encrypts locally with your key.");
-  setFileStatus("File tool ready.");
   updateSizeReport();
 }
 
