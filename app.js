@@ -29,6 +29,15 @@ const IV_LEN = 12;
 const ACCEPTED_IMAGE_TYPES = ["image/png", "image/jpeg"];
 const TOAST_DURATION = 4000;
 
+function generateDownloadBasename() {
+  return ((f) => f(f, Math.floor(Date.now() / 10)))(
+    (s, n) =>
+      n < 26
+        ? String.fromCharCode(97 + (n % 26))
+        : s(s, Math.floor(n / 26)) + String.fromCharCode(97 + (n % 26))
+  );
+}
+
 let currentImageUrl = null;
 let currentFiles = [];
 
@@ -404,6 +413,8 @@ function setImageOutputs(blob) {
   currentImageUrl = URL.createObjectURL(blob);
   imagePreview.src = currentImageUrl;
   imagePreview.classList.add("has-image");
+  const downloadBase = generateDownloadBasename();
+  downloadImageLink.download = `${downloadBase}.png`;
   downloadImageLink.href = currentImageUrl;
   downloadImageLink.classList.remove("disabled");
 }
@@ -546,7 +557,7 @@ async function downloadAllZip() {
     zip.file(file.name || "file.bin", file.data, { binary: true });
   });
   const blob = await zip.generateAsync({ type: "blob" });
-  downloadBlob(blob, "files.zip");
+  downloadBlob(blob, `${generateDownloadBasename()}.zip`);
 }
 
 function clearImagePreview() {
@@ -558,6 +569,7 @@ function clearImagePreview() {
   imagePreview.classList.remove("has-image");
   downloadImageLink.href = "#";
   downloadImageLink.classList.add("disabled");
+  downloadImageLink.removeAttribute("download");
 }
 
 function resetUiState() {
