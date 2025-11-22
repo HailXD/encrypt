@@ -27,13 +27,13 @@
       </section>
 
       <section class="panel stack">
-        <label for="password">Password</label>
-        <input id="password" type="password" placeholder="Choose a strong passphrase" autocomplete="off">
+        <label for="password">Password (optional)</label>
+        <input id="password" type="password" placeholder="Leave blank to encrypt with no password" autocomplete="off">
         <div class="actions">
           <button id="encrypt">Encrypt -></button>
           <button id="decrypt" class="ghost">Decrypt -></button>
         </div>
-        <p class="hint">We derive an AES key from your password with PBKDF2; nothing leaves the page.</p>
+        <p class="hint">Password is optional; if blank anyone can decrypt. We derive an AES key with PBKDF2 and AES-GCM locally.</p>
       </section>
 
       <section class="panel">
@@ -47,7 +47,7 @@
         <div>
           <p class="eyebrow">Files</p>
           <h2>Encrypt files into a JPEG</h2>
-          <p class="hint">Pick files, encrypt them with the same password, and download a noisy JPEG that hides the payload. Decrypt by uploading the JPEG below.</p>
+          <p class="hint">Pick files, optionally add a password, and download a JPEG that hides the payload. Decrypt by uploading the JPEG below.</p>
         </div>
         <div class="status" id="fileStatus">File tool ready.</div>
       </div>
@@ -59,7 +59,7 @@
           <button id="encryptFiles">Encrypt files to JPEG</button>
           <a id="downloadJpeg" class="download-link disabled" href="#" download="encrypted.jpeg">Download JPEG</a>
           <div class="preview-wrap">
-            <p class="hint">Preview of the encrypted JPEG (visual noise only).</p>
+            <p class="hint">Preview of the encrypted JPEG output.</p>
             <img id="jpegPreview" alt="Encrypted JPEG preview">
           </div>
         </div>

@@ -43,6 +43,16 @@ function base64ToBuffer(str) {
   return bytes.buffer;
 }
 
+function fillRandom(view) {
+  const target = view instanceof Uint8Array ? view : new Uint8Array(view);
+  const max = 65_536;
+  for (let offset = 0; offset < target.length; offset += max) {
+    const slice = target.subarray(offset, Math.min(offset + max, target.length));
+    crypto.getRandomValues(slice);
+  }
+  return target;
+}
+
 function formatBytes(bytes) {
   if (bytes === 0) return "0 B";
   const units = ["B", "KB", "MB", "GB"];
@@ -78,12 +88,6 @@ async function encrypt() {
   const password = passwordEl.value;
   const text = plainEl.value;
 
-  if (!password) {
-    setStatus("Password required to encrypt.", true);
-    passwordEl.focus();
-    return;
-  }
-
   if (!text) {
     setStatus("Enter something to encrypt.", true);
     plainEl.focus();
@@ -107,7 +111,11 @@ async function encrypt() {
     ].join(":");
 
     cipherEl.value = output;
-    setStatus("Encrypted. Copy the full salt:iv:cipher string.");
+    setStatus(
+      password
+        ? "Encrypted. Copy the full salt:iv:cipher string."
+        : "Encrypted with an empty password; anyone can decrypt."
+    );
   } catch (err) {
     console.error(err);
     setStatus("Encryption failed.", true);
@@ -117,12 +125,6 @@ async function encrypt() {
 async function decrypt() {
   const password = passwordEl.value;
   const cipherText = cipherEl.value.trim();
-
-  if (!password) {
-    setStatus("Password required to decrypt.", true);
-    passwordEl.focus();
-    return;
-  }
 
   const parts = cipherText.split(":");
   if (parts.length !== 3) {
@@ -229,8 +231,9 @@ function unpackFiles(data) {
 }
 
 async function payloadToJpeg(payloadBytes) {
-  const width = 512;
   const pixelCount = Math.ceil(payloadBytes.length / 3);
+  const idealWidth = Math.ceil(Math.sqrt(pixelCount * (4 / 3)));
+  const width = Math.min(1024, Math.max(64, idealWidth));
   const height = Math.max(1, Math.ceil(pixelCount / width));
 
   const canvas = document.createElement("canvas");
@@ -238,8 +241,7 @@ async function payloadToJpeg(payloadBytes) {
   canvas.height = height;
   const ctx = canvas.getContext("2d");
   const imageData = ctx.createImageData(width, height);
-  const noise = crypto.getRandomValues(new Uint8Array(imageData.data.length));
-  imageData.data.set(noise);
+  fillRandom(imageData.data);
 
   let pixel = 0;
   for (let i = 0; i < payloadBytes.length; i += 3) {
@@ -297,6 +299,7 @@ function setJpegOutputs(blob) {
   if (currentJpegUrl) URL.revokeObjectURL(currentJpegUrl);
   currentJpegUrl = URL.createObjectURL(blob);
   jpegPreview.src = currentJpegUrl;
+  jpegPreview.classList.add("has-image");
   downloadJpegLink.href = currentJpegUrl;
   downloadJpegLink.classList.remove("disabled");
 }
@@ -304,12 +307,6 @@ function setJpegOutputs(blob) {
 async function encryptFilesToJpeg() {
   const password = passwordEl.value;
   const files = Array.from(fileInput.files || []);
-
-  if (!password) {
-    setFileStatus("Password required to encrypt files.", true);
-    passwordEl.focus();
-    return;
-  }
 
   if (!files.length) {
     setFileStatus("Choose files to encrypt.", true);
@@ -334,7 +331,9 @@ async function encryptFilesToJpeg() {
 
     const jpegBlob = await payloadToJpeg(payload);
     setJpegOutputs(jpegBlob);
-    setFileStatus(`Encrypted ${files.length} file(s) into JPEG (${formatBytes(jpegBlob.size)}).`);
+    setFileStatus(
+      `Encrypted ${files.length} file(s) into JPEG (${formatBytes(jpegBlob.size)})${password ? "" : " using no password."}`
+    );
   } catch (err) {
     console.error(err);
     setFileStatus("File encryption failed.", true);
@@ -344,12 +343,6 @@ async function encryptFilesToJpeg() {
 async function decryptJpeg() {
   const password = passwordEl.value;
   const file = jpegInput.files?.[0];
-
-  if (!password) {
-    setFileStatus("Password required to decrypt.", true);
-    passwordEl.focus();
-    return;
-  }
 
   if (!file) {
     setFileStatus("Select a JPEG to decrypt.", true);
@@ -403,7 +396,7 @@ function renderFileList(files) {
     nameEl.textContent = file.name;
     const metaEl = document.createElement("div");
     metaEl.className = "file-meta";
-    metaEl.textContent = `${file.type || "file"} · ${formatBytes(file.data.length)}`;
+    metaEl.textContent = `${file.type || "file"} - ${formatBytes(file.data.length)}`;
     info.append(nameEl, metaEl);
 
     const downloadBtn = document.createElement("button");
@@ -449,14 +442,37 @@ async function downloadAllZip() {
   setFileStatus("Zip ready.");
 }
 
+function clearJpegPreview() {
+  if (currentJpegUrl) {
+    URL.revokeObjectURL(currentJpegUrl);
+    currentJpegUrl = null;
+  }
+  jpegPreview.src = "";
+  jpegPreview.classList.remove("has-image");
+  downloadJpegLink.href = "#";
+  downloadJpegLink.classList.add("disabled");
+}
+
+function resetUiState() {
+  plainEl.value = "";
+  cipherEl.value = "";
+  passwordEl.value = "";
+  fileInput.value = "";
+  jpegInput.value = "";
+  clearJpegPreview();
+  renderFileList([]);
+  setStatus("Ready. Uses PBKDF2 + AES-GCM locally.");
+  setFileStatus("File tool ready.");
+}
+
 document.getElementById("encrypt").addEventListener("click", encrypt);
 document.getElementById("decrypt").addEventListener("click", decrypt);
 encryptFilesBtn.addEventListener("click", encryptFilesToJpeg);
 decryptJpegBtn.addEventListener("click", decryptJpeg);
 downloadAllBtn.addEventListener("click", downloadAllZip);
 
-plainEl.value = "";
-cipherEl.value = "";
-setStatus("Ready. Uses PBKDF2 + AES-GCM locally.");
-setFileStatus("File tool ready.");
-renderFileList([]);
+window.addEventListener("pageshow", event => {
+  if (event.persisted) resetUiState();
+});
+
+resetUiState();
