@@ -5,23 +5,25 @@ const statusEl = document.getElementById("status");
 
 const fileInput = document.getElementById("fileInput");
 const encryptFilesBtn = document.getElementById("encryptFiles");
-const downloadJpegLink = document.getElementById("downloadJpeg");
-const jpegPreview = document.getElementById("jpegPreview");
+const downloadImageLink = document.getElementById("downloadImage");
+const imagePreview = document.getElementById("imagePreview");
 const fileStatusEl = document.getElementById("fileStatus");
-const jpegInput = document.getElementById("jpegInput");
-const decryptJpegBtn = document.getElementById("decryptJpeg");
+const imageInput = document.getElementById("imageInput");
+const decryptImageBtn = document.getElementById("decryptImage");
 const fileListEl = document.getElementById("fileList");
 const downloadAllBtn = document.getElementById("downloadAll");
+const encryptSelectionListEl = document.getElementById("encryptSelectionList");
 
 const textEncoder = new TextEncoder();
 const textDecoder = new TextDecoder();
 
 const PACKAGE_MAGIC = "ENCFILE1";
-const JPEG_MARKER = "ENCJPEG::DATA::";
+const EMBED_MARKER = "ENCPNG::DATA::";
+const LEGACY_MARKERS = ["ENCJPEG::DATA::"];
 const SALT_LEN = 16;
 const IV_LEN = 12;
 
-let currentJpegUrl = null;
+let currentImageUrl = null;
 let currentFiles = [];
 
 function setStatus(message, isError = false) {
@@ -41,16 +43,6 @@ function bufferToBase64(buf) {
 function base64ToBuffer(str) {
   const bytes = Uint8Array.from(atob(str), c => c.charCodeAt(0));
   return bytes.buffer;
-}
-
-function fillRandom(view) {
-  const target = view instanceof Uint8Array ? view : new Uint8Array(view);
-  const max = 65_536;
-  for (let offset = 0; offset < target.length; offset += max) {
-    const slice = target.subarray(offset, Math.min(offset + max, target.length));
-    crypto.getRandomValues(slice);
-  }
-  return target;
 }
 
 function formatBytes(bytes) {
@@ -230,39 +222,34 @@ function unpackFiles(data) {
   return files;
 }
 
-async function payloadToJpeg(payloadBytes) {
-  const pixelCount = Math.ceil(payloadBytes.length / 3);
-  const idealWidth = Math.ceil(Math.sqrt(pixelCount * (4 / 3)));
-  const width = Math.min(1024, Math.max(64, idealWidth));
-  const height = Math.max(1, Math.ceil(pixelCount / width));
+async function payloadToPng(payloadBytes) {
+  const width = 192;
+  const height = 144; // 4:3 ratio, small preview to keep PNG size down
 
   const canvas = document.createElement("canvas");
   canvas.width = width;
   canvas.height = height;
   const ctx = canvas.getContext("2d");
-  const imageData = ctx.createImageData(width, height);
-  fillRandom(imageData.data);
 
-  let pixel = 0;
-  for (let i = 0; i < payloadBytes.length; i += 3) {
-    const base = pixel * 4;
-    imageData.data[base] = payloadBytes[i];
-    imageData.data[base + 1] = payloadBytes[i + 1] ?? imageData.data[base + 1];
-    imageData.data[base + 2] = payloadBytes[i + 2] ?? imageData.data[base + 2];
-    imageData.data[base + 3] = 255;
-    pixel++;
-  }
+  const gradient = ctx.createLinearGradient(0, 0, width, height);
+  gradient.addColorStop(0, "#101528");
+  gradient.addColorStop(1, "#1b2238");
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, width, height);
 
-  ctx.putImageData(imageData, 0, 0);
+  ctx.fillStyle = "rgba(88, 241, 193, 0.12)";
+  ctx.fillRect(0, 0, width, height / 3);
+  ctx.fillStyle = "rgba(144, 180, 255, 0.12)";
+  ctx.fillRect(0, height / 2, width, height / 2);
 
-  const baseBlob = await new Promise(resolve => canvas.toBlob(resolve, "image/jpeg", 0.92));
-  if (!baseBlob) throw new Error("Unable to create JPEG blob.");
+  const baseBlob = await new Promise(resolve => canvas.toBlob(resolve, "image/png"));
+  if (!baseBlob) throw new Error("Unable to create PNG blob.");
 
-  const marker = textEncoder.encode(JPEG_MARKER);
+  const marker = textEncoder.encode(EMBED_MARKER);
   const lenBuf = new ArrayBuffer(4);
   new DataView(lenBuf).setUint32(0, payloadBytes.length, false);
 
-  return new Blob([baseBlob, marker, lenBuf, payloadBytes], { type: "image/jpeg" });
+  return new Blob([baseBlob, marker, lenBuf, payloadBytes], { type: "image/png" });
 }
 
 function findMarker(bytes, marker) {
@@ -279,13 +266,23 @@ function findMarker(bytes, marker) {
   return -1;
 }
 
-function extractPayloadFromJpeg(buffer) {
+function extractPayloadFromImage(buffer) {
   const bytes = new Uint8Array(buffer);
-  const marker = textEncoder.encode(JPEG_MARKER);
-  const idx = findMarker(bytes, marker);
-  if (idx === -1) throw new Error("No embedded payload found.");
+  const markers = [EMBED_MARKER, ...LEGACY_MARKERS].map(m => textEncoder.encode(m));
 
-  const lenStart = idx + marker.length;
+  let idx = -1;
+  let markerUsed = null;
+  for (const marker of markers) {
+    const found = findMarker(bytes, marker);
+    if (found !== -1 && found > idx) {
+      idx = found;
+      markerUsed = marker;
+    }
+  }
+
+  if (idx === -1 || !markerUsed) throw new Error("No embedded payload found.");
+
+  const lenStart = idx + markerUsed.length;
   if (lenStart + 4 > bytes.length) throw new Error("Corrupt payload length.");
   const view = new DataView(bytes.buffer, bytes.byteOffset + lenStart, 4);
   const payloadLen = view.getUint32(0, false);
@@ -295,16 +292,49 @@ function extractPayloadFromJpeg(buffer) {
   return bytes.slice(payloadStart, payloadStart + payloadLen);
 }
 
-function setJpegOutputs(blob) {
-  if (currentJpegUrl) URL.revokeObjectURL(currentJpegUrl);
-  currentJpegUrl = URL.createObjectURL(blob);
-  jpegPreview.src = currentJpegUrl;
-  jpegPreview.classList.add("has-image");
-  downloadJpegLink.href = currentJpegUrl;
-  downloadJpegLink.classList.remove("disabled");
+function renderEncryptSelectionList(files) {
+  encryptSelectionListEl.innerHTML = "";
+  encryptSelectionListEl.classList.toggle("empty", files.length === 0);
+  if (!files.length) {
+    encryptSelectionListEl.textContent = "No files selected.";
+    return;
+  }
+
+  files.forEach(file => {
+    const row = document.createElement("div");
+    row.className = "file-row";
+
+    const info = document.createElement("div");
+    info.className = "file-info";
+    const nameEl = document.createElement("div");
+    nameEl.className = "file-name";
+    nameEl.textContent = file.name;
+    const metaEl = document.createElement("div");
+    metaEl.className = "file-meta";
+    metaEl.textContent = `${file.type || "file"} - ${formatBytes(file.size)}`;
+    info.append(nameEl, metaEl);
+
+    row.append(info);
+    encryptSelectionListEl.appendChild(row);
+  });
 }
 
-async function encryptFilesToJpeg() {
+function handleEncryptSelectionChange() {
+  const files = Array.from(fileInput.files || []);
+  renderEncryptSelectionList(files);
+  setFileStatus(files.length ? `Ready to encrypt ${files.length} file(s).` : "Choose files to encrypt.");
+}
+
+function setImageOutputs(blob) {
+  if (currentImageUrl) URL.revokeObjectURL(currentImageUrl);
+  currentImageUrl = URL.createObjectURL(blob);
+  imagePreview.src = currentImageUrl;
+  imagePreview.classList.add("has-image");
+  downloadImageLink.href = currentImageUrl;
+  downloadImageLink.classList.remove("disabled");
+}
+
+async function encryptFilesToImage() {
   const password = passwordEl.value;
   const files = Array.from(fileInput.files || []);
 
@@ -329,10 +359,10 @@ async function encryptFilesToJpeg() {
     payload.set(iv, SALT_LEN);
     payload.set(new Uint8Array(encrypted), SALT_LEN + IV_LEN);
 
-    const jpegBlob = await payloadToJpeg(payload);
-    setJpegOutputs(jpegBlob);
+    const imageBlob = await payloadToPng(payload);
+    setImageOutputs(imageBlob);
     setFileStatus(
-      `Encrypted ${files.length} file(s) into JPEG (${formatBytes(jpegBlob.size)})${password ? "" : " using no password."}`
+      `Encrypted ${files.length} file(s) into PNG (${formatBytes(imageBlob.size)})${password ? "" : " using no password."}`
     );
   } catch (err) {
     console.error(err);
@@ -340,20 +370,20 @@ async function encryptFilesToJpeg() {
   }
 }
 
-async function decryptJpeg() {
+async function decryptImage() {
   const password = passwordEl.value;
-  const file = jpegInput.files?.[0];
+  const file = imageInput.files?.[0];
 
   if (!file) {
-    setFileStatus("Select a JPEG to decrypt.", true);
-    jpegInput.focus();
+    setFileStatus("Select a PNG to decrypt.", true);
+    imageInput.focus();
     return;
   }
 
   try {
-    setFileStatus("Reading JPEG...");
+    setFileStatus("Reading PNG...");
     const buffer = await file.arrayBuffer();
-    const payload = extractPayloadFromJpeg(buffer);
+    const payload = extractPayloadFromImage(buffer);
     if (payload.length < SALT_LEN + IV_LEN + 1) {
       throw new Error("Payload too small.");
     }
@@ -367,11 +397,11 @@ async function decryptJpeg() {
     const files = unpackFiles(new Uint8Array(decrypted));
 
     renderFileList(files);
-    setFileStatus(`Decrypted ${files.length} file(s) from JPEG.`);
+    setFileStatus(`Decrypted ${files.length} file(s) from PNG.`);
   } catch (err) {
     console.error(err);
     renderFileList([]);
-    setFileStatus("Decryption failed. Check the JPEG or password.", true);
+    setFileStatus("Decryption failed. Check the PNG or password.", true);
   }
 }
 
@@ -442,15 +472,15 @@ async function downloadAllZip() {
   setFileStatus("Zip ready.");
 }
 
-function clearJpegPreview() {
-  if (currentJpegUrl) {
-    URL.revokeObjectURL(currentJpegUrl);
-    currentJpegUrl = null;
+function clearImagePreview() {
+  if (currentImageUrl) {
+    URL.revokeObjectURL(currentImageUrl);
+    currentImageUrl = null;
   }
-  jpegPreview.src = "";
-  jpegPreview.classList.remove("has-image");
-  downloadJpegLink.href = "#";
-  downloadJpegLink.classList.add("disabled");
+  imagePreview.src = "";
+  imagePreview.classList.remove("has-image");
+  downloadImageLink.href = "#";
+  downloadImageLink.classList.add("disabled");
 }
 
 function resetUiState() {
@@ -458,8 +488,9 @@ function resetUiState() {
   cipherEl.value = "";
   passwordEl.value = "";
   fileInput.value = "";
-  jpegInput.value = "";
-  clearJpegPreview();
+  imageInput.value = "";
+  clearImagePreview();
+  renderEncryptSelectionList([]);
   renderFileList([]);
   setStatus("Ready. Uses PBKDF2 + AES-GCM locally.");
   setFileStatus("File tool ready.");
@@ -467,8 +498,9 @@ function resetUiState() {
 
 document.getElementById("encrypt").addEventListener("click", encrypt);
 document.getElementById("decrypt").addEventListener("click", decrypt);
-encryptFilesBtn.addEventListener("click", encryptFilesToJpeg);
-decryptJpegBtn.addEventListener("click", decryptJpeg);
+fileInput.addEventListener("change", handleEncryptSelectionChange);
+encryptFilesBtn.addEventListener("click", encryptFilesToImage);
+decryptImageBtn.addEventListener("click", decryptImage);
 downloadAllBtn.addEventListener("click", downloadAllZip);
 
 window.addEventListener("pageshow", event => {

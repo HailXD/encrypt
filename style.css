@@ -261,7 +261,7 @@ footer {
   gap: 8px;
 }
 
-#jpegPreview {
+#imagePreview {
   width: 100%;
   aspect-ratio: 4 / 3;
   height: auto;
@@ -272,7 +272,7 @@ footer {
   display: block;
 }
 
-#jpegPreview.has-image {
+#imagePreview.has-image {
   background: none;
 }
 

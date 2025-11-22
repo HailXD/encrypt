@@ -46,8 +46,8 @@
       <div class="file-head">
         <div>
           <p class="eyebrow">Files</p>
-          <h2>Encrypt files into a JPEG</h2>
-          <p class="hint">Pick files, optionally add a password, and download a JPEG that hides the payload. Decrypt by uploading the JPEG below.</p>
+          <h2>Encrypt files into a PNG</h2>
+          <p class="hint">Pick files, optionally add a password, and download a PNG that hides the payload. Decrypt by uploading the image below.</p>
         </div>
         <div class="status" id="fileStatus">File tool ready.</div>
       </div>
@@ -56,18 +56,19 @@
         <div class="file-card">
           <label for="fileInput">Files to encrypt (multiple allowed)</label>
           <input id="fileInput" type="file" multiple>
-          <button id="encryptFiles">Encrypt files to JPEG</button>
-          <a id="downloadJpeg" class="download-link disabled" href="#" download="encrypted.jpeg">Download JPEG</a>
+          <div id="encryptSelectionList" class="file-list empty">No files selected.</div>
+          <button id="encryptFiles">Encrypt files to PNG</button>
+          <a id="downloadImage" class="download-link disabled" href="#" download="encrypted.png">Download PNG</a>
           <div class="preview-wrap">
-            <p class="hint">Preview of the encrypted JPEG output.</p>
-            <img id="jpegPreview" alt="Encrypted JPEG preview">
+            <p class="hint">Preview of the encrypted PNG output.</p>
+            <img id="imagePreview" alt="Encrypted image preview">
           </div>
         </div>
 
         <div class="file-card">
-          <label for="jpegInput">Decrypt from JPEG</label>
-          <input id="jpegInput" type="file" accept="image/jpeg">
-          <button id="decryptJpeg">Decrypt JPEG</button>
+          <label for="imageInput">Decrypt from image</label>
+          <input id="imageInput" type="file" accept="image/png, image/jpeg">
+          <button id="decryptImage">Decrypt image</button>
           <div class="actions compact">
             <button id="downloadAll" class="ghost" disabled>Download all as .zip</button>
           </div>
