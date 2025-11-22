@@ -71,15 +71,6 @@ h2 {
   font-weight: 700;
 }
 
-.badge {
-  padding: 10px 14px;
-  border-radius: 999px;
-  border: 1px solid var(--border);
-  color: var(--accent-2);
-  background: rgba(144, 180, 255, 0.08);
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
-}
-
 main {
   display: grid;
   gap: 16px;
@@ -194,10 +185,6 @@ footer {
   border-radius: 999px;
   border: 1px solid var(--border);
   background: rgba(255, 255, 255, 0.04);
-}
-
-.tiny {
-  opacity: 0.8;
 }
 
 .file-panel {
@@ -409,5 +396,4 @@ footer {
   body { padding: 14px; }
   .shell { padding: 18px; }
   main { display: flex; flex-direction: column; }
-  .badge { width: fit-content; }
 }
