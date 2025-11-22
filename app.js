@@ -124,5 +124,4 @@ async function decrypt() {
 document.getElementById("encrypt").addEventListener("click", encrypt);
 document.getElementById("decrypt").addEventListener("click", decrypt);
 
-plainEl.value = "This text never leaves your browser. Try encrypting it!";
 setStatus("Ready. Uses PBKDF2 + AES-GCM locally.");
