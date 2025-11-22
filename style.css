@@ -50,6 +50,11 @@ h1 {
   letter-spacing: -0.02em;
 }
 
+h2 {
+  margin: 6px 0 6px;
+  letter-spacing: -0.01em;
+}
+
 .lede {
   margin: 0;
   color: var(--muted);
@@ -192,6 +197,120 @@ footer {
 
 .tiny {
   opacity: 0.8;
+}
+
+.file-panel {
+  margin-top: 18px;
+}
+
+.file-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.file-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 16px;
+}
+
+.file-card {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.download-link {
+  display: inline-block;
+  margin-top: 4px;
+  padding: 11px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  color: var(--text);
+  text-decoration: none;
+  background: rgba(255, 255, 255, 0.03);
+  transition: border-color 0.2s, transform 0.1s;
+}
+
+.download-link:hover {
+  border-color: var(--accent);
+  transform: translateY(-1px);
+}
+
+.download-link.disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+.preview-wrap {
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+#jpegPreview {
+  width: 100%;
+  border-radius: 10px;
+  background: #0b0d18;
+  object-fit: cover;
+  min-height: 160px;
+}
+
+.file-list {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.02);
+  min-height: 120px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.file-list.empty {
+  color: var(--muted);
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.file-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: rgba(0, 0, 0, 0.15);
+}
+
+.file-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.file-name {
+  font-weight: 600;
+}
+
+.file-meta {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.actions.compact {
+  gap: 8px;
 }
 
 @media (max-width: 720px) {
