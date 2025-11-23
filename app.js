@@ -17,6 +17,11 @@ const encryptSelectionListEl = document.getElementById("encryptSelectionList");
 const encryptSelectionDetailsEl = document.getElementById("encryptSelectionDetails");
 const encryptSelectionSummaryEl = document.getElementById("encryptSelectionSummary");
 const sizeReportEl = document.getElementById("sizeReport");
+const textToImageEl = document.getElementById("textToImage");
+const encryptTextImageBtn = document.getElementById("encryptTextImage");
+const downloadTextImageLink = document.getElementById("downloadTextImage");
+const textImagePreview = document.getElementById("textImagePreview");
+const textImageSizeReportEl = document.getElementById("textImageSizeReport");
 
 const textEncoder = new TextEncoder();
 const textDecoder = new TextDecoder();
@@ -45,8 +50,10 @@ function baseNameFromFilename(name) {
 }
 
 let currentImageUrl = null;
+let currentTextImageUrl = null;
 let currentFiles = [];
 let currentDownloadBase = "";
+let currentTextDownloadBase = "";
 
 function getToastLabel(type) {
   switch (type) {
@@ -92,12 +99,12 @@ function showToast(message, { type = "info", label } = {}) {
   setTimeout(() => dismissToast(toast), TOAST_DURATION);
 }
 
-function updateSizeReport(inputBytes = 0, outputBytes = 0) {
-  if (!sizeReportEl) return;
+function updateSizeReport(inputBytes = 0, outputBytes = 0, targetEl = sizeReportEl) {
+  if (!targetEl) return;
   if (!inputBytes || !outputBytes) {
-    sizeReportEl.textContent = "No size comparison yet.";
-    sizeReportEl.style.color = "var(--muted)";
-    sizeReportEl.classList.add("empty");
+    targetEl.textContent = "No size comparison yet.";
+    targetEl.style.color = "var(--muted)";
+    targetEl.classList.add("empty");
     return;
   }
 
@@ -105,9 +112,9 @@ function updateSizeReport(inputBytes = 0, outputBytes = 0) {
   const pct = inputBytes ? (diff / inputBytes) * 100 : 0;
   const pctText = `${diff >= 0 ? "+" : ""}${pct.toFixed(1)}%`;
 
-  sizeReportEl.textContent = `Input: ${formatBytes(inputBytes)} -> Output: ${formatBytes(outputBytes)} (${pctText})`;
-  sizeReportEl.style.color = diff > 0 ? "#ff9e9e" : diff < 0 ? "#a2f7d8" : "#d5d8e7";
-  sizeReportEl.classList.remove("empty");
+  targetEl.textContent = `Input: ${formatBytes(inputBytes)} -> Output: ${formatBytes(outputBytes)} (${pctText})`;
+  targetEl.style.color = diff > 0 ? "#ff9e9e" : diff < 0 ? "#a2f7d8" : "#d5d8e7";
+  targetEl.classList.remove("empty");
 }
 
 function bufferToBase64(buf) {
@@ -426,6 +433,17 @@ function setImageOutputs(blob) {
   downloadImageLink.classList.remove("disabled");
 }
 
+function setTextImageOutputs(blob) {
+  if (currentTextImageUrl) URL.revokeObjectURL(currentTextImageUrl);
+  currentTextImageUrl = URL.createObjectURL(blob);
+  textImagePreview.src = currentTextImageUrl;
+  textImagePreview.classList.add("has-image");
+  currentTextDownloadBase = generateDownloadBasename();
+  downloadTextImageLink.download = `${currentTextDownloadBase}.png`;
+  downloadTextImageLink.href = currentTextImageUrl;
+  downloadTextImageLink.classList.remove("disabled");
+}
+
 async function encryptFilesToImage() {
   const keyText = keyEl.value;
   const files = Array.from(fileInput.files || []);
@@ -462,6 +480,42 @@ async function encryptFilesToImage() {
     console.error(err);
     updateSizeReport();
     showToast("File encryption failed.", { type: "error" });
+  }
+}
+
+async function encryptTextToImage() {
+  const keyText = keyEl.value;
+  const message = (textToImageEl?.value || "").trim();
+
+  if (!message) {
+    showToast("Enter text to encrypt into an image.", { type: "warn" });
+    textToImageEl?.focus();
+    return;
+  }
+
+  try {
+    const messageBytes = textEncoder.encode(message);
+    const virtualFile = { name: "message.txt", type: "text/plain" };
+    const packed = packFiles([virtualFile], [messageBytes.buffer]);
+
+    const salt = crypto.getRandomValues(new Uint8Array(SALT_LEN));
+    const iv = crypto.getRandomValues(new Uint8Array(IV_LEN));
+    const key = await deriveKey(keyText, salt);
+    const encrypted = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, packed);
+
+    const payload = new Uint8Array(SALT_LEN + IV_LEN + encrypted.byteLength);
+    payload.set(salt, 0);
+    payload.set(iv, SALT_LEN);
+    payload.set(new Uint8Array(encrypted), SALT_LEN + IV_LEN);
+
+    const imageBlob = await payloadToPng(payload);
+    setTextImageOutputs(imageBlob);
+    updateSizeReport(messageBytes.length, imageBlob.size, textImageSizeReportEl);
+    showToast("Text encrypted into a PNG.", { type: "success", label: "Encrypted" });
+  } catch (err) {
+    console.error(err);
+    updateSizeReport(0, 0, textImageSizeReportEl);
+    showToast("Text to image encryption failed.", { type: "error" });
   }
 }
 
@@ -584,6 +638,18 @@ function clearImagePreview() {
   downloadImageLink.removeAttribute("download");
 }
 
+function clearTextImagePreview() {
+  if (currentTextImageUrl) {
+    URL.revokeObjectURL(currentTextImageUrl);
+    currentTextImageUrl = null;
+  }
+  textImagePreview.src = "";
+  textImagePreview.classList.remove("has-image");
+  downloadTextImageLink.href = "#";
+  downloadTextImageLink.classList.add("disabled");
+  downloadTextImageLink.removeAttribute("download");
+}
+
 function resetUiState() {
   plainEl.value = "";
   cipherEl.value = "";
@@ -594,7 +660,11 @@ function resetUiState() {
   clearImagePreview();
   renderEncryptSelectionList([]);
   renderFileList([]);
+  clearTextImagePreview();
+  if (textToImageEl) textToImageEl.value = "";
+  currentTextDownloadBase = "";
   updateSizeReport();
+  updateSizeReport(0, 0, textImageSizeReportEl);
 }
 
 function assignFilesToInput(inputEl, files) {
@@ -658,6 +728,7 @@ document.getElementById("encrypt").addEventListener("click", encrypt);
 document.getElementById("decrypt").addEventListener("click", decrypt);
 fileInput.addEventListener("change", handleEncryptSelectionChange);
 encryptFilesBtn.addEventListener("click", encryptFilesToImage);
+encryptTextImageBtn.addEventListener("click", encryptTextToImage);
 decryptImageBtn.addEventListener("click", decryptImage);
 downloadAllBtn.addEventListener("click", downloadAllZip);
 

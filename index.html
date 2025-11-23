@@ -102,6 +102,38 @@
                         </div>
                     </div>
 
+                    <div class="file-card" id="textImageCard">
+                        <label for="textToImage">Text to encrypt into PNG</label>
+                        <textarea
+                            id="textToImage"
+                            placeholder="Type a message to embed into an image..."
+                        ></textarea>
+                        <p class="hint">
+                            Uses the same key field above (optional).
+                        </p>
+                        <div class="actions">
+                            <button id="encryptTextImage">Encrypt text to PNG</button>
+                        </div>
+                        <a
+                            id="downloadTextImage"
+                            class="download-link disabled"
+                            href="#"
+                            >Download PNG</a
+                        >
+                        <div id="textImageSizeReport" class="size-report empty">
+                            No size comparison yet.
+                        </div>
+                        <div class="preview-wrap">
+                            <p class="hint">
+                                Preview of the encrypted text as a PNG.
+                            </p>
+                            <img
+                                id="textImagePreview"
+                                alt="Encrypted text image preview"
+                            />
+                        </div>
+                    </div>
+
                     <div class="file-card" id="decryptCard">
                         <label for="imageInput">Decrypt from image</label>
                         <input
