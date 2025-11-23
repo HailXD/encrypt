@@ -25,6 +25,7 @@ const textEncoder = new TextEncoder();
 const textDecoder = new TextDecoder();
 
 const PACKAGE_MAGIC = "ENCFILE1";
+const PACKAGE_VERSION = 2;
 const EMBED_MARKER = "ENCPNG::DATA::";
 const LEGACY_MARKERS = ["ENCJPEG::DATA::"];
 const SALT_LEN = 16;
@@ -226,19 +227,27 @@ async function decrypt() {
   }
 }
 
-function packFiles(fileList, buffers) {
+function packFiles(fileList, buffers, messageBytes = null) {
   const magicBytes = textEncoder.encode(PACKAGE_MAGIC);
+  const messageData = messageBytes ? new Uint8Array(messageBytes) : null;
+  const messageLength = messageData?.byteLength || 0;
+
   const meta = {
-    version: 1,
+    version: PACKAGE_VERSION,
+    hasMessage: messageLength > 0,
+    messageBytes: messageLength,
+    messageType: messageLength ? "text/plain" : undefined,
     files: fileList.map((file, i) => ({
       name: file.name,
       type: file.type || "application/octet-stream",
       size: buffers[i].byteLength
     }))
   };
+
   const headerBytes = textEncoder.encode(JSON.stringify(meta));
 
-  let total = magicBytes.length + 4 + headerBytes.length;
+  // Total = magic + header length + header + message length + message data + file blobs.
+  let total = magicBytes.length + 4 + headerBytes.length + 4 + messageLength;
   for (const buf of buffers) {
     total += 4 + buf.byteLength;
   }
@@ -247,10 +256,18 @@ function packFiles(fileList, buffers) {
   output.set(magicBytes, 0);
   const view = new DataView(output.buffer);
   let offset = magicBytes.length;
+
   view.setUint32(offset, headerBytes.length, false);
   offset += 4;
   output.set(headerBytes, offset);
   offset += headerBytes.length;
+
+  view.setUint32(offset, messageLength, false);
+  offset += 4;
+  if (messageLength) {
+    output.set(messageData, offset);
+    offset += messageLength;
+  }
 
   for (let i = 0; i < buffers.length; i++) {
     const buf = new Uint8Array(buffers[i]);
@@ -281,9 +298,26 @@ function unpackFiles(data) {
   offset += headerLen;
 
   const meta = JSON.parse(headerStr);
+  const version = meta.version || 1;
   const files = [];
+  let embeddedMessage = null;
 
-  for (const entry of meta.files) {
+  if (version >= 2) {
+    if (offset + 4 > bytes.length) {
+      throw new Error("Corrupt package (message length).");
+    }
+    const msgLen = view.getUint32(offset, false);
+    offset += 4;
+    if (msgLen > 0) {
+      if (offset + msgLen > bytes.length) {
+        throw new Error("Corrupt package (message body).");
+      }
+      embeddedMessage = bytes.slice(offset, offset + msgLen);
+      offset += msgLen;
+    }
+  }
+
+  for (const entry of meta.files || []) {
     if (offset + 4 > bytes.length) {
       throw new Error("Corrupt package (length).");
     }
@@ -299,7 +333,14 @@ function unpackFiles(data) {
     });
   }
 
-  return files;
+  if (version < 2 && !embeddedMessage) {
+    const messageFile = files.find(file => file.name === "message.txt" && isTextFileEntry(file));
+    if (messageFile) {
+      embeddedMessage = messageFile.data;
+    }
+  }
+
+  return { files, message: embeddedMessage, meta };
 }
 
 async function payloadToPng(payloadBytes) {
@@ -477,21 +518,14 @@ async function encryptFilesToImage() {
   }
 
   try {
-    const payloadFiles = [];
     const buffers = [];
-
-    if (messageBytes) {
-      payloadFiles.push({ name: "message.txt", type: "text/plain", size: messageBytes.byteLength });
-      buffers.push(messageBytes.buffer);
-    }
-
     for (const file of files) {
-      payloadFiles.push(file);
       buffers.push(await file.arrayBuffer());
     }
 
-    const packed = packFiles(payloadFiles, buffers);
-    const totalInputBytes = buffers.reduce((sum, buf) => sum + buf.byteLength, 0);
+    const packed = packFiles(files, buffers, messageBytes);
+    const totalInputBytes =
+      buffers.reduce((sum, buf) => sum + buf.byteLength, 0) + (messageBytes?.byteLength || 0);
 
     const salt = crypto.getRandomValues(new Uint8Array(SALT_LEN));
     const iv = crypto.getRandomValues(new Uint8Array(IV_LEN));
@@ -542,11 +576,17 @@ async function decryptImage() {
 
     const key = await deriveKey(keyText, salt);
     const decrypted = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, cipher);
-    const files = unpackFiles(new Uint8Array(decrypted));
+    const { files, message } = unpackFiles(new Uint8Array(decrypted));
 
     renderFileList(files);
-    populateDecryptedTextFromFiles(files);
-    showToast(`Decrypted ${files.length} file${files.length === 1 ? "" : "s"}.`, {
+    const { usedMessage, hasText } = applyDecryptedText(files, message);
+    const fileCountText = `${files.length} file${files.length === 1 ? "" : "s"}`;
+    const parts = [];
+    if (usedMessage || hasText) parts.push("text");
+    if (files.length) parts.push(fileCountText);
+    const toastMessage = parts.length ? `Decrypted ${parts.join(" and ")}.` : "Decrypted.";
+
+    showToast(toastMessage, {
       type: "success",
       label: "Decrypted"
     });
@@ -669,6 +709,27 @@ function populateDecryptedTextFromFiles(files) {
     setDecryptedText("");
     return false;
   }
+}
+
+function decodeMessageBytes(bytes) {
+  if (!bytes || !bytes.length) return null;
+  try {
+    return textDecoder.decode(bytes);
+  } catch (err) {
+    console.error("Unable to decode embedded text", err);
+    return null;
+  }
+}
+
+function applyDecryptedText(files, messageBytes) {
+  const messageText = decodeMessageBytes(messageBytes);
+  if (messageText !== null) {
+    setDecryptedText(messageText);
+    return { usedMessage: true, hasText: true };
+  }
+
+  const populated = populateDecryptedTextFromFiles(files);
+  return { usedMessage: false, hasText: populated };
 }
 
 function resetUiState() {
