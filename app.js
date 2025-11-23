@@ -24,10 +24,11 @@ const sizeReportEl = document.getElementById("sizeReport");
 const textEncoder = new TextEncoder();
 const textDecoder = new TextDecoder();
 
-const PACKAGE_MAGIC = "ENCFILE1";
+const PACKAGE_MAGIC = "⃅₟⃺⃺";
+const LEGACY_PACKAGE_MAGICS = ["ENCFILE1"];
 const PACKAGE_VERSION = 2;
-const EMBED_MARKER = "ENCPNG::DATA::";
-const LEGACY_MARKERS = ["ENCJPEG::DATA::"];
+const EMBED_MARKER = "⿠⃷⹷⹷";
+const LEGACY_MARKERS = ["ENCPNG::DATA::", "ENCJPEG::DATA::"];
 const SALT_LEN = 16;
 const IV_LEN = 12;
 const ACCEPTED_IMAGE_TYPES = ["image/png", "image/jpeg"];
@@ -280,15 +281,29 @@ function packFiles(fileList, buffers, messageBytes = null) {
   return output;
 }
 
+// Accept both current and legacy package headers for backward compatibility.
+function matchPackageMagic(bytes) {
+  const magicOptions = [PACKAGE_MAGIC, ...LEGACY_PACKAGE_MAGICS].map(m => textEncoder.encode(m));
+  for (const magic of magicOptions) {
+    if (bytes.length < magic.length) continue;
+    let matches = true;
+    for (let i = 0; i < magic.length; i++) {
+      if (bytes[i] !== magic[i]) {
+        matches = false;
+        break;
+      }
+    }
+    if (matches) return magic;
+  }
+  return null;
+}
+
 function unpackFiles(data) {
   const bytes = data instanceof Uint8Array ? data : new Uint8Array(data);
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
-  const magicBytes = textEncoder.encode(PACKAGE_MAGIC);
-
-  for (let i = 0; i < magicBytes.length; i++) {
-    if (bytes[i] !== magicBytes[i]) {
-      throw new Error("Invalid package header.");
-    }
+  const magicBytes = matchPackageMagic(bytes);
+  if (!magicBytes) {
+    throw new Error("Invalid package header.");
   }
 
   let offset = magicBytes.length;
