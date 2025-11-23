@@ -27,12 +27,6 @@
                         <h2>Encrypt Inputs</h2>
                     </div>
 
-                    <label for="plain">Input Text</label>
-                    <textarea
-                        id="plain"
-                        placeholder="Type or paste text to encrypt..."
-                    ></textarea>
-
                     <label for="encryptKey">Encrypt Key (optional)</label>
                     <input
                         id="encryptKey"
@@ -41,12 +35,15 @@
                         autocomplete="off"
                     />
 
+                    <label for="plain">Input Text</label>
+                    <textarea
+                        id="plain"
+                        placeholder="Type or paste text to encrypt..."
+                    ></textarea>
+
                     <label for="fileInput">Input Files</label>
                     <input id="fileInput" type="file" multiple />
-                    <details
-                        id="encryptSelectionDetails"
-                        class="file-collapse"
-                    >
+                    <details id="encryptSelectionDetails" class="file-collapse">
                         <summary id="encryptSelectionSummary">
                             No files or text selected.
                         </summary>
@@ -57,7 +54,9 @@
 
                     <div class="actions dual">
                         <button id="encrypt">Encrypt (Text)</button>
-                        <button id="encryptPng" class="ghost">Encrypt (PNG)</button>
+                        <button id="encryptPng" class="ghost">
+                            Encrypt (PNG)
+                        </button>
                     </div>
 
                     <div id="sizeReport" class="size-report empty">
@@ -116,7 +115,9 @@
                         type="file"
                         accept="image/png, image/jpeg"
                     />
-                    <button id="decryptImage" class="ghost">Decrypt (PNG)</button>
+                    <button id="decryptImage" class="ghost">
+                        Decrypt (PNG)
+                    </button>
                 </section>
 
                 <section class="panel stack" id="decryptOutputs">
@@ -143,7 +144,12 @@
             </main>
         </div>
 
-        <div id="toastContainer" class="toast-container" aria-live="polite" aria-atomic="true"></div>
+        <div
+            id="toastContainer"
+            class="toast-container"
+            aria-live="polite"
+            aria-atomic="true"
+        ></div>
 
         <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
         <script src="app.js"></script>
