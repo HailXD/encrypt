@@ -24,10 +24,10 @@ const sizeReportEl = document.getElementById("sizeReport");
 const textEncoder = new TextEncoder();
 const textDecoder = new TextDecoder();
 
-const PACKAGE_MAGIC = "⃅₟⃺⃺";
+const PACKAGE_MAGIC = "⃅Z⿠";
 const LEGACY_PACKAGE_MAGICS = ["ENCFILE1"];
 const PACKAGE_VERSION = 2;
-const EMBED_MARKER = "⿠⃷⹷⹷";
+const EMBED_MARKER = "⿠Z⃅";
 const LEGACY_MARKERS = ["ENCPNG::DATA::", "ENCJPEG::DATA::"];
 const SALT_LEN = 16;
 const IV_LEN = 12;
