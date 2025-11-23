@@ -359,8 +359,8 @@ function unpackFiles(data) {
 }
 
 async function payloadToPng(payloadBytes) {
-  const width = 12;
-  const height = 9; // tiny 4:3 canvas to keep PNG overhead low while still visible
+  const width = 36;
+  const height = 27; // tiny 4:3 canvas to keep PNG overhead low while still visible
 
   const canvas = document.createElement("canvas");
   canvas.width = width;
