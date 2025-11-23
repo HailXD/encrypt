@@ -2,7 +2,8 @@ const plainEl = document.getElementById("plain");
 const cipherEl = document.getElementById("cipher");
 const cipherInputEl = document.getElementById("cipherInput");
 const decryptedTextEl = document.getElementById("decryptedText");
-const keyEl = document.getElementById("key");
+const encryptKeyEl = document.getElementById("encryptKey");
+const decryptKeyEl = document.getElementById("decryptKey");
 const toastContainer = document.getElementById("toastContainer");
 
 const fileInput = document.getElementById("fileInput");
@@ -153,7 +154,7 @@ async function deriveKey(keyText, salt) {
 }
 
 async function encrypt() {
-  const keyText = keyEl.value;
+  const keyText = encryptKeyEl?.value || "";
   const text = plainEl.value;
 
   if (!text) {
@@ -179,7 +180,6 @@ async function encrypt() {
     ].join(":");
 
     cipherEl.value = output;
-    if (cipherInputEl) cipherInputEl.value = output;
     showToast("Text encrypted.", { type: "success", label: "Encrypted" });
   } catch (err) {
     console.error(err);
@@ -188,7 +188,7 @@ async function encrypt() {
 }
 
 async function decrypt() {
-  const keyText = keyEl.value;
+  const keyText = decryptKeyEl?.value || "";
   const cipherText = (cipherInputEl?.value || cipherEl?.value || "").trim();
 
   if (!cipherText) {
@@ -464,7 +464,7 @@ function setImageOutputs(blob) {
 }
 
 async function encryptFilesToImage() {
-  const keyText = keyEl.value;
+  const keyText = encryptKeyEl?.value || "";
   const files = Array.from(fileInput.files || []);
   const message = (plainEl?.value || "").trim();
   const messageBytes = message ? textEncoder.encode(message) : null;
@@ -518,7 +518,7 @@ async function encryptFilesToImage() {
 }
 
 async function decryptImage() {
-  const keyText = keyEl.value;
+  const keyText = decryptKeyEl?.value || "";
   const file = imageInput.files?.[0];
 
   if (!file) {
@@ -676,7 +676,8 @@ function resetUiState() {
   if (cipherEl) cipherEl.value = "";
   if (cipherInputEl) cipherInputEl.value = "";
   setDecryptedText("");
-  if (keyEl) keyEl.value = "";
+  if (encryptKeyEl) encryptKeyEl.value = "";
+  if (decryptKeyEl) decryptKeyEl.value = "";
   if (fileInput) fileInput.value = "";
   if (imageInput) imageInput.value = "";
   currentDownloadBase = "";

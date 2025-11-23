@@ -24,7 +24,6 @@
             <main class="grid-2x2">
                 <section class="panel stack" id="encryptInputs">
                     <div class="section-head">
-                        <p class="eyebrow">Row 1 / Column 1</p>
                         <h2>Encrypt Inputs</h2>
                     </div>
 
@@ -34,9 +33,9 @@
                         placeholder="Type or paste text to encrypt..."
                     ></textarea>
 
-                    <label for="key">Key (optional)</label>
+                    <label for="encryptKey">Encrypt Key (optional)</label>
                     <input
-                        id="key"
+                        id="encryptKey"
                         type="text"
                         placeholder="Leave blank to encrypt with no key"
                         autocomplete="off"
@@ -68,7 +67,6 @@
 
                 <section class="panel stack" id="encryptOutputs">
                     <div class="section-head">
-                        <p class="eyebrow">Row 1 / Column 2</p>
                         <h2>Encrypt Outputs</h2>
                     </div>
 
@@ -94,16 +92,23 @@
 
                 <section class="panel stack" id="decryptInputs">
                     <div class="section-head">
-                        <p class="eyebrow">Row 2 / Column 1</p>
                         <h2>Decrypt Inputs</h2>
                     </div>
+
+                    <label for="decryptKey">Decrypt Key (optional)</label>
+                    <input
+                        id="decryptKey"
+                        type="text"
+                        placeholder="Leave blank to decrypt with no key"
+                        autocomplete="off"
+                    />
 
                     <label for="cipherInput">Input Text</label>
                     <textarea
                         id="cipherInput"
                         placeholder="Paste encrypted text to decrypt..."
                     ></textarea>
-                    <button id="decrypt">Decrypt (Text)</button>
+                    <button id="decrypt" class="ghost">Decrypt (Text)</button>
 
                     <label for="imageInput">Input PNG</label>
                     <input
@@ -111,12 +116,11 @@
                         type="file"
                         accept="image/png, image/jpeg"
                     />
-                    <button id="decryptImage">Decrypt (PNG)</button>
+                    <button id="decryptImage" class="ghost">Decrypt (PNG)</button>
                 </section>
 
                 <section class="panel stack" id="decryptOutputs">
                     <div class="section-head">
-                        <p class="eyebrow">Row 2 / Column 2</p>
                         <h2>Decrypt Outputs</h2>
                     </div>
 
