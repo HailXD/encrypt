@@ -21,16 +21,19 @@
                 </div>
             </header>
 
-            <main>
-                <section class="panel">
-                    <label for="plain">Unencrypted text</label>
+            <main class="grid-2x2">
+                <section class="panel stack" id="encryptInputs">
+                    <div class="section-head">
+                        <p class="eyebrow">Row 1 / Column 1</p>
+                        <h2>Encrypt Inputs</h2>
+                    </div>
+
+                    <label for="plain">Input Text</label>
                     <textarea
                         id="plain"
-                        placeholder="Enter plain text here..."
+                        placeholder="Type or paste text to encrypt..."
                     ></textarea>
-                </section>
 
-                <section class="panel stack">
                     <label for="key">Key (optional)</label>
                     <input
                         id="key"
@@ -38,122 +41,102 @@
                         placeholder="Leave blank to encrypt with no key"
                         autocomplete="off"
                     />
-                    <div class="actions">
-                        <button id="decrypt" class="ghost"><- Decrypt</button>
-                        <button id="encrypt">Encrypt -></button>
+
+                    <label for="fileInput">Input Files</label>
+                    <input id="fileInput" type="file" multiple />
+                    <details
+                        id="encryptSelectionDetails"
+                        class="file-collapse"
+                    >
+                        <summary id="encryptSelectionSummary">
+                            No files or text selected.
+                        </summary>
+                        <div id="encryptSelectionList" class="file-list empty">
+                            No files or text selected.
+                        </div>
+                    </details>
+
+                    <div class="actions dual">
+                        <button id="encrypt">Encrypt (Text)</button>
+                        <button id="encryptPng" class="ghost">Encrypt (PNG)</button>
+                    </div>
+
+                    <div id="sizeReport" class="size-report empty">
+                        Before & after sizes + change will appear here.
                     </div>
                 </section>
 
-                <section class="panel">
-                    <label for="cipher">Encrypted text</label>
+                <section class="panel stack" id="encryptOutputs">
+                    <div class="section-head">
+                        <p class="eyebrow">Row 1 / Column 2</p>
+                        <h2>Encrypt Outputs</h2>
+                    </div>
+
+                    <label for="cipher">Output Text</label>
                     <textarea
                         id="cipher"
-                        placeholder="Enter cipher text here..."
+                        placeholder="Encrypted text will appear here..."
+                    ></textarea>
+
+                    <a
+                        id="downloadImage"
+                        class="download-link disabled"
+                        href="#"
+                    >
+                        Download PNG
+                    </a>
+
+                    <div class="preview-wrap">
+                        <p class="hint">Output PNG Preview</p>
+                        <img id="imagePreview" alt="Encrypted image preview" />
+                    </div>
+                </section>
+
+                <section class="panel stack" id="decryptInputs">
+                    <div class="section-head">
+                        <p class="eyebrow">Row 2 / Column 1</p>
+                        <h2>Decrypt Inputs</h2>
+                    </div>
+
+                    <label for="cipherInput">Input Text</label>
+                    <textarea
+                        id="cipherInput"
+                        placeholder="Paste encrypted text to decrypt..."
+                    ></textarea>
+                    <button id="decrypt">Decrypt (Text)</button>
+
+                    <label for="imageInput">Input PNG</label>
+                    <input
+                        id="imageInput"
+                        type="file"
+                        accept="image/png, image/jpeg"
+                    />
+                    <button id="decryptImage">Decrypt (PNG)</button>
+                </section>
+
+                <section class="panel stack" id="decryptOutputs">
+                    <div class="section-head">
+                        <p class="eyebrow">Row 2 / Column 2</p>
+                        <h2>Decrypt Outputs</h2>
+                    </div>
+
+                    <div class="file-output-head">
+                        <label>Output File List</label>
+                        <button id="downloadAll" class="ghost" disabled>
+                            Download all as .zip
+                        </button>
+                    </div>
+                    <div id="fileList" class="file-list empty">
+                        No files decrypted yet.
+                    </div>
+
+                    <label for="decryptedText">Output Text</label>
+                    <textarea
+                        id="decryptedText"
+                        placeholder="Decrypted text will appear here..."
                     ></textarea>
                 </section>
             </main>
-
-            <section class="panel file-panel">
-                <div class="file-head">
-                    <div>
-                        <p class="eyebrow">Files</p>
-                        <h2>Encrypt files into a PNG</h2>
-                    </div>
-                </div>
-
-                <div class="file-grid">
-                    <div class="file-card" id="encryptCard">
-                        <label for="fileInput"
-                            >Files to encrypt (multiple allowed)</label
-                        >
-                        <input id="fileInput" type="file" multiple />
-                        <details
-                            id="encryptSelectionDetails"
-                            class="file-collapse"
-                        >
-                            <summary id="encryptSelectionSummary">
-                                No files selected.
-                            </summary>
-                            <div
-                                id="encryptSelectionList"
-                                class="file-list empty"
-                            >
-                                No files selected.
-                            </div>
-                        </details>
-                        <button id="encryptFiles">Encrypt files to PNG</button>
-                        <a
-                            id="downloadImage"
-                            class="download-link disabled"
-                            href="#"
-                            >Download PNG</a
-                        >
-                        <div id="sizeReport" class="size-report empty">
-                            No size comparison yet.
-                        </div>
-                        <div class="preview-wrap">
-                            <p class="hint">
-                                Preview of the encrypted PNG output.
-                            </p>
-                            <img
-                                id="imagePreview"
-                                alt="Encrypted image preview"
-                            />
-                        </div>
-                    </div>
-
-                    <div class="file-card" id="textImageCard">
-                        <label for="textToImage">Text to encrypt into PNG</label>
-                        <textarea
-                            id="textToImage"
-                            placeholder="Type a message to embed into an image..."
-                        ></textarea>
-                        <p class="hint">
-                            Uses the same key field above (optional).
-                        </p>
-                        <div class="actions">
-                            <button id="encryptTextImage">Encrypt text to PNG</button>
-                        </div>
-                        <a
-                            id="downloadTextImage"
-                            class="download-link disabled"
-                            href="#"
-                            >Download PNG</a
-                        >
-                        <div id="textImageSizeReport" class="size-report empty">
-                            No size comparison yet.
-                        </div>
-                        <div class="preview-wrap">
-                            <p class="hint">
-                                Preview of the encrypted text as a PNG.
-                            </p>
-                            <img
-                                id="textImagePreview"
-                                alt="Encrypted text image preview"
-                            />
-                        </div>
-                    </div>
-
-                    <div class="file-card" id="decryptCard">
-                        <label for="imageInput">Decrypt from image</label>
-                        <input
-                            id="imageInput"
-                            type="file"
-                            accept="image/png, image/jpeg"
-                        />
-                        <button id="decryptImage">Decrypt image</button>
-                        <div class="actions compact">
-                            <button id="downloadAll" class="ghost" disabled>
-                                Download all as .zip
-                            </button>
-                        </div>
-                        <div id="fileList" class="file-list empty">
-                            No files decrypted yet.
-                        </div>
-                    </div>
-                </div>
-            </section>
-
         </div>
 
         <div id="toastContainer" class="toast-container" aria-live="polite" aria-atomic="true"></div>

@@ -1,15 +1,17 @@
 const plainEl = document.getElementById("plain");
 const cipherEl = document.getElementById("cipher");
+const cipherInputEl = document.getElementById("cipherInput");
+const decryptedTextEl = document.getElementById("decryptedText");
 const keyEl = document.getElementById("key");
 const toastContainer = document.getElementById("toastContainer");
 
 const fileInput = document.getElementById("fileInput");
-const encryptFilesBtn = document.getElementById("encryptFiles");
+const encryptPngBtn = document.getElementById("encryptPng");
 const downloadImageLink = document.getElementById("downloadImage");
 const imagePreview = document.getElementById("imagePreview");
 const imageInput = document.getElementById("imageInput");
-const encryptCard = document.getElementById("encryptCard");
-const decryptCard = document.getElementById("decryptCard");
+const encryptCard = document.getElementById("encryptInputs");
+const decryptCard = document.getElementById("decryptInputs");
 const decryptImageBtn = document.getElementById("decryptImage");
 const fileListEl = document.getElementById("fileList");
 const downloadAllBtn = document.getElementById("downloadAll");
@@ -17,11 +19,6 @@ const encryptSelectionListEl = document.getElementById("encryptSelectionList");
 const encryptSelectionDetailsEl = document.getElementById("encryptSelectionDetails");
 const encryptSelectionSummaryEl = document.getElementById("encryptSelectionSummary");
 const sizeReportEl = document.getElementById("sizeReport");
-const textToImageEl = document.getElementById("textToImage");
-const encryptTextImageBtn = document.getElementById("encryptTextImage");
-const downloadTextImageLink = document.getElementById("downloadTextImage");
-const textImagePreview = document.getElementById("textImagePreview");
-const textImageSizeReportEl = document.getElementById("textImageSizeReport");
 
 const textEncoder = new TextEncoder();
 const textDecoder = new TextDecoder();
@@ -50,10 +47,8 @@ function baseNameFromFilename(name) {
 }
 
 let currentImageUrl = null;
-let currentTextImageUrl = null;
 let currentFiles = [];
 let currentDownloadBase = "";
-let currentTextDownloadBase = "";
 
 function getToastLabel(type) {
   switch (type) {
@@ -90,7 +85,7 @@ function showToast(message, { type = "info", label } = {}) {
   const closeBtn = document.createElement("button");
   closeBtn.type = "button";
   closeBtn.setAttribute("aria-label", "Dismiss notification");
-  closeBtn.textContent = "×";
+  closeBtn.textContent = "x";
   closeBtn.addEventListener("click", () => dismissToast(toast));
 
   toast.append(labelEl, messageEl, closeBtn);
@@ -102,7 +97,7 @@ function showToast(message, { type = "info", label } = {}) {
 function updateSizeReport(inputBytes = 0, outputBytes = 0, targetEl = sizeReportEl) {
   if (!targetEl) return;
   if (!inputBytes || !outputBytes) {
-    targetEl.textContent = "No size comparison yet.";
+    targetEl.textContent = "Before & after sizes + change will appear here.";
     targetEl.style.color = "var(--muted)";
     targetEl.classList.add("empty");
     return;
@@ -184,6 +179,7 @@ async function encrypt() {
     ].join(":");
 
     cipherEl.value = output;
+    if (cipherInputEl) cipherInputEl.value = output;
     showToast("Text encrypted.", { type: "success", label: "Encrypted" });
   } catch (err) {
     console.error(err);
@@ -193,12 +189,18 @@ async function encrypt() {
 
 async function decrypt() {
   const keyText = keyEl.value;
-  const cipherText = cipherEl.value.trim();
+  const cipherText = (cipherInputEl?.value || cipherEl?.value || "").trim();
+
+  if (!cipherText) {
+    showToast("Paste encrypted text to decrypt.", { type: "warn" });
+    (cipherInputEl || cipherEl)?.focus();
+    return;
+  }
 
   const parts = cipherText.split(":");
   if (parts.length !== 3) {
     showToast("Cipher text looks invalid.", { type: "warn" });
-    cipherEl.focus();
+    (cipherInputEl || cipherEl)?.focus();
     return;
   }
 
@@ -215,7 +217,8 @@ async function decrypt() {
       data
     );
 
-    plainEl.value = textDecoder.decode(decrypted);
+    const plainText = textDecoder.decode(decrypted);
+    setDecryptedText(plainText);
     showToast("Text decrypted.", { type: "success", label: "Decrypted" });
   } catch (err) {
     console.error(err);
@@ -373,29 +376,51 @@ function extractPayloadFromImage(buffer) {
   return bytes.slice(payloadStart, payloadStart + payloadLen);
 }
 
-function renderEncryptSelectionList(files) {
-  const hasFiles = files.length > 0;
+function getPlainTextBytes() {
+  const text = plainEl?.value || "";
+  return text ? textEncoder.encode(text).byteLength : 0;
+}
+
+function renderEncryptSelectionList(files, textBytes = 0) {
+  const hasContent = files.length > 0 || textBytes > 0;
   encryptSelectionListEl.innerHTML = "";
-  encryptSelectionListEl.classList.toggle("empty", !hasFiles);
+  encryptSelectionListEl.classList.toggle("empty", !hasContent);
   if (encryptSelectionDetailsEl) {
-    encryptSelectionDetailsEl.classList.toggle("empty", !hasFiles);
-    if (!hasFiles) {
+    encryptSelectionDetailsEl.classList.toggle("empty", !hasContent);
+    if (!hasContent) {
       encryptSelectionDetailsEl.open = false;
     }
   }
 
   if (encryptSelectionSummaryEl) {
-    if (hasFiles) {
-      const totalBytes = files.reduce((sum, file) => sum + (file.size || 0), 0);
-      encryptSelectionSummaryEl.textContent = `${files.length} file${files.length === 1 ? "" : "s"} selected (${formatBytes(totalBytes)}); click to expand`;
+    if (hasContent) {
+      const totalBytes = files.reduce((sum, file) => sum + (file.size || 0), 0) + textBytes;
+      const totalItems = files.length + (textBytes > 0 ? 1 : 0);
+      encryptSelectionSummaryEl.textContent = `${totalItems} item${totalItems === 1 ? "" : "s"} selected (${formatBytes(totalBytes)}); click to expand`;
     } else {
-      encryptSelectionSummaryEl.textContent = "No files selected.";
+      encryptSelectionSummaryEl.textContent = "No files or text selected.";
     }
   }
 
-  if (!hasFiles) {
-    encryptSelectionListEl.textContent = "No files selected.";
+  if (!hasContent) {
+    encryptSelectionListEl.textContent = "No files or text selected.";
     return;
+  }
+
+  if (textBytes > 0) {
+    const row = document.createElement("div");
+    row.className = "file-row";
+    const info = document.createElement("div");
+    info.className = "file-info";
+    const nameEl = document.createElement("div");
+    nameEl.className = "file-name";
+    nameEl.textContent = "Embedded text";
+    const metaEl = document.createElement("div");
+    metaEl.className = "file-meta";
+    metaEl.textContent = `text/plain - ${formatBytes(textBytes)}`;
+    info.append(nameEl, metaEl);
+    row.append(info);
+    encryptSelectionListEl.appendChild(row);
   }
 
   files.forEach(file => {
@@ -419,7 +444,12 @@ function renderEncryptSelectionList(files) {
 
 function handleEncryptSelectionChange() {
   const files = Array.from(fileInput.files || []);
-  renderEncryptSelectionList(files);
+  renderEncryptSelectionList(files, getPlainTextBytes());
+}
+
+function handlePlainInputChange() {
+  const files = Array.from(fileInput.files || []);
+  renderEncryptSelectionList(files, getPlainTextBytes());
 }
 
 function setImageOutputs(blob) {
@@ -433,31 +463,35 @@ function setImageOutputs(blob) {
   downloadImageLink.classList.remove("disabled");
 }
 
-function setTextImageOutputs(blob) {
-  if (currentTextImageUrl) URL.revokeObjectURL(currentTextImageUrl);
-  currentTextImageUrl = URL.createObjectURL(blob);
-  textImagePreview.src = currentTextImageUrl;
-  textImagePreview.classList.add("has-image");
-  currentTextDownloadBase = generateDownloadBasename();
-  downloadTextImageLink.download = `${currentTextDownloadBase}.png`;
-  downloadTextImageLink.href = currentTextImageUrl;
-  downloadTextImageLink.classList.remove("disabled");
-}
-
 async function encryptFilesToImage() {
   const keyText = keyEl.value;
   const files = Array.from(fileInput.files || []);
+  const message = (plainEl?.value || "").trim();
+  const messageBytes = message ? textEncoder.encode(message) : null;
+  const totalItems = files.length + (messageBytes ? 1 : 0);
 
-  if (!files.length) {
-    showToast("Select files to encrypt first.", { type: "warn" });
+  if (!totalItems) {
+    showToast("Add text or files to encrypt into a PNG.", { type: "warn" });
     fileInput.focus();
     return;
   }
 
   try {
-    const buffers = await Promise.all(files.map(f => f.arrayBuffer()));
-    const packed = packFiles(files, buffers);
-    const totalInputBytes = files.reduce((sum, f) => sum + (f.size || 0), 0);
+    const payloadFiles = [];
+    const buffers = [];
+
+    if (messageBytes) {
+      payloadFiles.push({ name: "message.txt", type: "text/plain", size: messageBytes.byteLength });
+      buffers.push(messageBytes.buffer);
+    }
+
+    for (const file of files) {
+      payloadFiles.push(file);
+      buffers.push(await file.arrayBuffer());
+    }
+
+    const packed = packFiles(payloadFiles, buffers);
+    const totalInputBytes = buffers.reduce((sum, buf) => sum + buf.byteLength, 0);
 
     const salt = crypto.getRandomValues(new Uint8Array(SALT_LEN));
     const iv = crypto.getRandomValues(new Uint8Array(IV_LEN));
@@ -472,50 +506,14 @@ async function encryptFilesToImage() {
     const imageBlob = await payloadToPng(payload);
     setImageOutputs(imageBlob);
     updateSizeReport(totalInputBytes, imageBlob.size);
-    showToast(`Encrypted ${files.length} file${files.length === 1 ? "" : "s"} to PNG.`, {
+    showToast(`Encrypted ${totalItems} item${totalItems === 1 ? "" : "s"} to PNG.`, {
       type: "success",
       label: "Encrypted"
     });
   } catch (err) {
     console.error(err);
     updateSizeReport();
-    showToast("File encryption failed.", { type: "error" });
-  }
-}
-
-async function encryptTextToImage() {
-  const keyText = keyEl.value;
-  const message = (textToImageEl?.value || "").trim();
-
-  if (!message) {
-    showToast("Enter text to encrypt into an image.", { type: "warn" });
-    textToImageEl?.focus();
-    return;
-  }
-
-  try {
-    const messageBytes = textEncoder.encode(message);
-    const virtualFile = { name: "message.txt", type: "text/plain" };
-    const packed = packFiles([virtualFile], [messageBytes.buffer]);
-
-    const salt = crypto.getRandomValues(new Uint8Array(SALT_LEN));
-    const iv = crypto.getRandomValues(new Uint8Array(IV_LEN));
-    const key = await deriveKey(keyText, salt);
-    const encrypted = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, packed);
-
-    const payload = new Uint8Array(SALT_LEN + IV_LEN + encrypted.byteLength);
-    payload.set(salt, 0);
-    payload.set(iv, SALT_LEN);
-    payload.set(new Uint8Array(encrypted), SALT_LEN + IV_LEN);
-
-    const imageBlob = await payloadToPng(payload);
-    setTextImageOutputs(imageBlob);
-    updateSizeReport(messageBytes.length, imageBlob.size, textImageSizeReportEl);
-    showToast("Text encrypted into a PNG.", { type: "success", label: "Encrypted" });
-  } catch (err) {
-    console.error(err);
-    updateSizeReport(0, 0, textImageSizeReportEl);
-    showToast("Text to image encryption failed.", { type: "error" });
+    showToast("File/text encryption failed.", { type: "error" });
   }
 }
 
@@ -547,6 +545,7 @@ async function decryptImage() {
     const files = unpackFiles(new Uint8Array(decrypted));
 
     renderFileList(files);
+    populateDecryptedTextFromFiles(files);
     showToast(`Decrypted ${files.length} file${files.length === 1 ? "" : "s"}.`, {
       type: "success",
       label: "Decrypted"
@@ -554,6 +553,7 @@ async function decryptImage() {
   } catch (err) {
     console.error(err);
     renderFileList([]);
+    setDecryptedText("");
     showToast("Incorrect key or invalid image.", { type: "error" });
   }
 }
@@ -638,33 +638,52 @@ function clearImagePreview() {
   downloadImageLink.removeAttribute("download");
 }
 
-function clearTextImagePreview() {
-  if (currentTextImageUrl) {
-    URL.revokeObjectURL(currentTextImageUrl);
-    currentTextImageUrl = null;
+function setDecryptedText(text) {
+  if (decryptedTextEl) decryptedTextEl.value = text || "";
+  if (plainEl) plainEl.value = text || "";
+}
+
+function isTextFileEntry(file) {
+  const type = (file.type || "").toLowerCase();
+  const name = (file.name || "").toLowerCase();
+  return type.startsWith("text/") || /\.(txt|md|csv|json|log)$/i.test(name);
+}
+
+function populateDecryptedTextFromFiles(files) {
+  if (!files.length) {
+    setDecryptedText("");
+    return false;
   }
-  textImagePreview.src = "";
-  textImagePreview.classList.remove("has-image");
-  downloadTextImageLink.href = "#";
-  downloadTextImageLink.classList.add("disabled");
-  downloadTextImageLink.removeAttribute("download");
+  const textFile = files.find(isTextFileEntry);
+  if (!textFile) {
+    setDecryptedText("");
+    return false;
+  }
+
+  try {
+    const text = textDecoder.decode(textFile.data);
+    setDecryptedText(text);
+    return true;
+  } catch (err) {
+    console.error("Unable to decode text file", err);
+    setDecryptedText("");
+    return false;
+  }
 }
 
 function resetUiState() {
-  plainEl.value = "";
-  cipherEl.value = "";
-  keyEl.value = "";
-  fileInput.value = "";
-  imageInput.value = "";
+  if (plainEl) plainEl.value = "";
+  if (cipherEl) cipherEl.value = "";
+  if (cipherInputEl) cipherInputEl.value = "";
+  setDecryptedText("");
+  if (keyEl) keyEl.value = "";
+  if (fileInput) fileInput.value = "";
+  if (imageInput) imageInput.value = "";
   currentDownloadBase = "";
   clearImagePreview();
-  renderEncryptSelectionList([]);
+  renderEncryptSelectionList([], 0);
   renderFileList([]);
-  clearTextImagePreview();
-  if (textToImageEl) textToImageEl.value = "";
-  currentTextDownloadBase = "";
   updateSizeReport();
-  updateSizeReport(0, 0, textImageSizeReportEl);
 }
 
 function assignFilesToInput(inputEl, files) {
@@ -727,8 +746,8 @@ function isTextInput(el) {
 document.getElementById("encrypt").addEventListener("click", encrypt);
 document.getElementById("decrypt").addEventListener("click", decrypt);
 fileInput.addEventListener("change", handleEncryptSelectionChange);
-encryptFilesBtn.addEventListener("click", encryptFilesToImage);
-encryptTextImageBtn.addEventListener("click", encryptTextToImage);
+plainEl.addEventListener("input", handlePlainInputChange);
+encryptPngBtn.addEventListener("click", encryptFilesToImage);
 decryptImageBtn.addEventListener("click", decryptImage);
 downloadAllBtn.addEventListener("click", downloadAllZip);
 

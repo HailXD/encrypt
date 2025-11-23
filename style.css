@@ -56,6 +56,13 @@ h2 {
   letter-spacing: -0.01em;
 }
 
+.section-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+
 .lede {
   margin: 0;
   color: var(--muted);
@@ -71,10 +78,11 @@ h2 {
   font-weight: 700;
 }
 
-main {
+.grid-2x2 {
   display: grid;
   gap: 16px;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+  grid-auto-rows: 1fr;
 }
 
 .panel {
@@ -124,6 +132,11 @@ textarea {
   flex-wrap: wrap;
 }
 
+.actions.dual button {
+  flex: 1;
+  min-width: 140px;
+}
+
 button {
   border: none;
   border-radius: 12px;
@@ -155,6 +168,14 @@ button:active {
 
 .stack {
   gap: 12px;
+}
+
+.file-output-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
 .hint {
@@ -193,6 +214,11 @@ button:active {
 }
 
 .file-card.dragging {
+  border-color: var(--accent);
+  background: rgba(88, 241, 193, 0.06);
+}
+
+.panel.dragging {
   border-color: var(--accent);
   background: rgba(88, 241, 193, 0.06);
 }
@@ -451,9 +477,9 @@ button:active {
   body { padding: 18px; }
   .shell { padding: 22px; }
   header { flex-direction: column; }
+  .grid-2x2 { grid-template-columns: 1fr; }
   .actions { flex-direction: column; }
   .actions button { width: 100%; }
-  .file-grid { grid-template-columns: 1fr; }
   textarea { min-height: 160px; }
 }
 
