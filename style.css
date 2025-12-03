@@ -151,6 +151,11 @@ textarea {
 
 .toggle-visibility:hover {
   color: var(--accent);
+  transform: translateY(-50%);
+}
+
+.toggle-visibility:active {
+  transform: translateY(-50%);
 }
 
 .toggle-visibility:focus-visible {
