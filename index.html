@@ -28,12 +28,64 @@
                     </div>
 
                     <label for="encryptKey">Encrypt Key (optional)</label>
-                    <input
-                        id="encryptKey"
-                        type="text"
-                        placeholder="Leave blank to encrypt with no key"
-                        autocomplete="off"
-                    />
+                    <div class="input-with-toggle">
+                        <input
+                            id="encryptKey"
+                            type="password"
+                            placeholder="Leave blank to encrypt with no key"
+                            autocomplete="new-password"
+                        />
+                        <button
+                            id="encryptKeyToggle"
+                            type="button"
+                            class="toggle-visibility"
+                            aria-pressed="false"
+                            aria-label="Show key"
+                            data-visible="false"
+                        >
+                            <svg
+                                class="icon eye-open"
+                                viewBox="0 0 24 24"
+                                aria-hidden="true"
+                            >
+                                <path
+                                    d="M2 12s4-6 10-6 10 6 10 6-4 6-10 6S2 12 2 12Z"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    stroke-width="1.6"
+                                />
+                                <circle
+                                    cx="12"
+                                    cy="12"
+                                    r="3.5"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    stroke-width="1.6"
+                                />
+                            </svg>
+                            <svg
+                                class="icon eye-closed"
+                                viewBox="0 0 24 24"
+                                aria-hidden="true"
+                            >
+                                <path
+                                    d="M2 12s4-6 10-6 10 6 10 6-4 6-10 6S2 12 2 12Z"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    stroke-width="1.6"
+                                />
+                                <line
+                                    x1="4"
+                                    y1="4"
+                                    x2="20"
+                                    y2="20"
+                                    stroke="currentColor"
+                                    stroke-width="1.6"
+                                    stroke-linecap="round"
+                                />
+                            </svg>
+                        </button>
+                    </div>
 
                     <label for="plain">Input Text</label>
                     <textarea
@@ -95,12 +147,64 @@
                     </div>
 
                     <label for="decryptKey">Decrypt Key (optional)</label>
-                    <input
-                        id="decryptKey"
-                        type="text"
-                        placeholder="Leave blank to decrypt with no key"
-                        autocomplete="off"
-                    />
+                    <div class="input-with-toggle">
+                        <input
+                            id="decryptKey"
+                            type="password"
+                            placeholder="Leave blank to decrypt with no key"
+                            autocomplete="new-password"
+                        />
+                        <button
+                            id="decryptKeyToggle"
+                            type="button"
+                            class="toggle-visibility"
+                            aria-pressed="false"
+                            aria-label="Show key"
+                            data-visible="false"
+                        >
+                            <svg
+                                class="icon eye-open"
+                                viewBox="0 0 24 24"
+                                aria-hidden="true"
+                            >
+                                <path
+                                    d="M2 12s4-6 10-6 10 6 10 6-4 6-10 6S2 12 2 12Z"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    stroke-width="1.6"
+                                />
+                                <circle
+                                    cx="12"
+                                    cy="12"
+                                    r="3.5"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    stroke-width="1.6"
+                                />
+                            </svg>
+                            <svg
+                                class="icon eye-closed"
+                                viewBox="0 0 24 24"
+                                aria-hidden="true"
+                            >
+                                <path
+                                    d="M2 12s4-6 10-6 10 6 10 6-4 6-10 6S2 12 2 12Z"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    stroke-width="1.6"
+                                />
+                                <line
+                                    x1="4"
+                                    y1="4"
+                                    x2="20"
+                                    y2="20"
+                                    stroke="currentColor"
+                                    stroke-width="1.6"
+                                    stroke-linecap="round"
+                                />
+                            </svg>
+                        </button>
+                    </div>
 
                     <label for="cipherInput">Input Text</label>
                     <textarea

@@ -4,6 +4,8 @@ const cipherInputEl = document.getElementById("cipherInput");
 const decryptedTextEl = document.getElementById("decryptedText");
 const encryptKeyEl = document.getElementById("encryptKey");
 const decryptKeyEl = document.getElementById("decryptKey");
+const encryptKeyToggleEl = document.getElementById("encryptKeyToggle");
+const decryptKeyToggleEl = document.getElementById("decryptKeyToggle");
 const toastContainer = document.getElementById("toastContainer");
 
 const fileInput = document.getElementById("fileInput");
@@ -695,7 +697,6 @@ function clearImagePreview() {
 
 function setDecryptedText(text) {
   if (decryptedTextEl) decryptedTextEl.value = text || "";
-  if (plainEl) plainEl.value = text || "";
 }
 
 function isTextFileEntry(file) {
@@ -754,6 +755,8 @@ function resetUiState() {
   setDecryptedText("");
   if (encryptKeyEl) encryptKeyEl.value = "";
   if (decryptKeyEl) decryptKeyEl.value = "";
+  setVisibilityState(encryptKeyToggleEl, encryptKeyEl, false);
+  setVisibilityState(decryptKeyToggleEl, decryptKeyEl, false);
   if (fileInput) fileInput.value = "";
   if (imageInput) imageInput.value = "";
   currentDownloadBase = "";
@@ -819,6 +822,28 @@ function isTextInput(el) {
   }
   return false;
 }
+
+function setVisibilityState(buttonEl, inputEl, isVisible) {
+  if (!buttonEl || !inputEl) return;
+  inputEl.type = isVisible ? "text" : "password";
+  buttonEl.dataset.visible = isVisible ? "true" : "false";
+  buttonEl.setAttribute("aria-pressed", isVisible ? "true" : "false");
+  buttonEl.setAttribute("aria-label", `${isVisible ? "Hide" : "Show"} key`);
+  buttonEl.title = isVisible ? "Hide key" : "Show key";
+}
+
+function setupVisibilityToggle(buttonEl, inputEl) {
+  if (!buttonEl || !inputEl) return;
+  setVisibilityState(buttonEl, inputEl, false);
+  buttonEl.addEventListener("click", () => {
+    const nextVisible = buttonEl.dataset.visible !== "true";
+    setVisibilityState(buttonEl, inputEl, nextVisible);
+    inputEl.focus();
+  });
+}
+
+setupVisibilityToggle(encryptKeyToggleEl, encryptKeyEl);
+setupVisibilityToggle(decryptKeyToggleEl, decryptKeyEl);
 
 document.getElementById("encrypt").addEventListener("click", encrypt);
 document.getElementById("decrypt").addEventListener("click", decrypt);
