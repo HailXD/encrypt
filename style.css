@@ -125,37 +125,42 @@ textarea {
 }
 
 .input-with-toggle {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+  position: relative;
 }
 
 .input-with-toggle input {
-  flex: 1;
+  padding-right: 48px;
 }
 
 .toggle-visibility {
-  width: 46px;
-  height: 46px;
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 34px;
+  height: 34px;
   padding: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.03);
+  border: none;
+  background: transparent;
   color: var(--muted);
+  cursor: pointer;
 }
 
 .toggle-visibility:hover {
-  border-color: var(--accent);
   color: var(--accent);
+}
+
+.toggle-visibility:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 8px;
 }
 
 .toggle-visibility[data-visible="true"] {
   color: var(--accent);
-  border-color: var(--accent);
-  background: rgba(88, 241, 193, 0.08);
 }
 
 .toggle-visibility svg {
