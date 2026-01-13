@@ -583,6 +583,7 @@ decryptBtn.addEventListener("click", async () => {
     selectedFiles = selectedFiles.filter((item) => item.source !== "secret");
     for (const it of list) {
       if (it.name === x) continue;
+      if (it.name === "payload.7z" && (!it.size || it.size === 0)) continue;
       selectedFiles.push({
         source: "secret",
         name: it.name,
