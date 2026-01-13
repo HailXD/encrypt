@@ -22,10 +22,13 @@
                   placeholder="Enter key..."
                   autocomplete="new-password"
                 />
-                <button class="input-toggle" id="toggleKey" title="Show/Hide key">
-                  Show
-                </button>
               </div>
+            </div>
+            <div class="row meta-row">
+              <button class="input-toggle" id="toggleKey" title="Show/Hide key">
+                Show
+              </button>
+              <span class="pill" id="secretBadge">No secret loaded</span>
             </div>
           </div>
 
@@ -37,7 +40,6 @@
                 type="file"
                 accept=".safetensors,application/octet-stream"
               />
-              <span class="pill" id="secretBadge">No secret loaded</span>
             </div>
           </div>
         </div>

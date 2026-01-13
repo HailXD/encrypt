@@ -78,6 +78,11 @@ label {
   align-items: center;
 }
 
+.meta-row {
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+
 .input-wrap {
   display: flex;
   gap: 8px;
