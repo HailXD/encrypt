@@ -59,6 +59,22 @@
           <textarea id="text" placeholder="Type secret text here..."></textarea>
         </div>
 
+        <div class="files-add">
+          <div class="row" style="justify-content: space-between; align-items: flex-end">
+            <div>
+              <label for="fileInput">Add file(s)</label>
+              <input id="fileInput" type="file" multiple />
+              <div class="hint">
+                Selected files will be added to the archive alongside the note
+                file named <span class="mono">x</span>.
+              </div>
+            </div>
+            <button class="btn danger" id="clearFiles">
+              Delete all selected
+            </button>
+          </div>
+        </div>
+
         <details id="filesDetails">
           <summary>
             <div class="summary-left">
@@ -68,24 +84,6 @@
             <div class="pill" id="filesPill">Collapsed</div>
           </summary>
           <div class="details-body">
-            <div class="row" style="justify-content: space-between">
-              <div>
-                <label style="margin: 0 0 6px 0">Add file(s)</label>
-                <input id="fileInput" type="file" multiple />
-                <div class="hint">
-                  Selected files will be added to the archive alongside the note
-                  file named <span class="mono">x</span>.
-                </div>
-              </div>
-              <div style="display: flex; gap: 10px; align-items: flex-end">
-                <button class="btn danger" id="clearFiles">
-                  Delete all selected
-                </button>
-              </div>
-            </div>
-
-            <div class="hr"></div>
-
             <div class="small">Selected for encryption</div>
             <div class="list" id="selectedList"></div>
           </div>

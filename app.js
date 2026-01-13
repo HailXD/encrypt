@@ -2,6 +2,9 @@
 const SEVENZ_BASE = "https://unpkg.com/7z-wasm@1.2.0/";
 const SEVENZ_ESM = SEVENZ_BASE + "7zz.es6.js";
 const SEVENZ_WASM = SEVENZ_BASE + "7zz.wasm";
+const SEVENZ_SIGNATURE = new Uint8Array([0x37, 0x7a, 0xbc, 0xaf, 0x27, 0x1c]);
+const SEVENZ_HEADER_LEN = 32;
+const SEVENZ_HEADER_KEY = "p";
 
 // === DOM ===
 const el = (id) => document.getElementById(id);
@@ -76,6 +79,50 @@ function u8concat(...parts) {
     o += p.length;
   }
   return out;
+}
+
+function bytesToBase64(bytes) {
+  let s = "";
+  for (let i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]);
+  return btoa(s);
+}
+
+function base64ToBytes(text) {
+  const bin = atob(text);
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+
+function isSevenZ(bytes) {
+  if (bytes.length < SEVENZ_SIGNATURE.length) return false;
+  for (let i = 0; i < SEVENZ_SIGNATURE.length; i++) {
+    if (bytes[i] !== SEVENZ_SIGNATURE[i]) return false;
+  }
+  return true;
+}
+
+function splitSevenZ(bytes) {
+  if (!isSevenZ(bytes) || bytes.length < SEVENZ_HEADER_LEN) {
+    return { head: null, body: bytes };
+  }
+  return {
+    head: bytes.slice(0, SEVENZ_HEADER_LEN),
+    body: bytes.slice(SEVENZ_HEADER_LEN),
+  };
+}
+
+function joinSevenZ(bytes, headBase64) {
+  if (isSevenZ(bytes)) return bytes;
+  if (!headBase64) return bytes;
+  let head = null;
+  try {
+    head = base64ToBytes(headBase64);
+  } catch {
+    return bytes;
+  }
+  if (head.length !== SEVENZ_HEADER_LEN) return bytes;
+  return u8concat(head, bytes);
 }
 
 function wrapSafetensors(payloadU8, metadata = {}) {
@@ -511,7 +558,9 @@ encryptBtn.addEventListener("click", async () => {
       files: selectedFiles,
     });
 
-    const safetensorsBytes = wrapSafetensors(archive7zBytes, {    });
+    const { head, body } = splitSevenZ(archive7zBytes);
+    const metadata = head ? { [SEVENZ_HEADER_KEY]: bytesToBase64(head) } : {};
+    const safetensorsBytes = wrapSafetensors(body, metadata);
 
     // Save to disk
     downloadBytes(
@@ -553,16 +602,18 @@ decryptBtn.addEventListener("click", async () => {
 
     const fileBytes = new Uint8Array(await f.arrayBuffer());
 
-    const { payload } = parseSafetensors(fileBytes);
+    const { header, payload } = parseSafetensors(fileBytes);
+    const meta = header?.__metadata__ || {};
+    const archiveBytes = joinSevenZ(payload, meta[SEVENZ_HEADER_KEY]);
     const x = f.name.endsWith(".safetensors")
       ? f.name.slice(0, -".safetensors".length)
       : "x";
 
-    const { list } = await list7zFiles({ key, archiveBytes: payload });
+    const { list } = await list7zFiles({ key, archiveBytes });
 
     const noteText = await extractSingleFile({
       key,
-      archiveBytes: payload,
+      archiveBytes,
       filename: x,
     });
 
@@ -573,7 +624,7 @@ decryptBtn.addEventListener("click", async () => {
       x,
       list,
       noteText,
-      archive7zBytes: payload,
+      archive7zBytes: archiveBytes,
     };
     secretFileCache = new Map();
     selectedFiles = selectedFiles.filter((item) => item.source !== "secret");

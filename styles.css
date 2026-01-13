@@ -195,6 +195,14 @@ textarea {
     Consolas, "Liberation Mono", monospace;
 }
 
+.files-add {
+  margin-top: 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  padding: 14px;
+}
+
 details {
   margin-top: 16px;
   border: 1px solid var(--line);
