@@ -3,10 +3,11 @@ const SEVENZ_BASE = "./vendor/7z-wasm/";
 const SEVENZ_ESM = SEVENZ_BASE + "7zz.es6.js";
 const SEVENZ_WASM = SEVENZ_BASE + "7zz.wasm";
 const SEVENZ_SIGNATURE = new Uint8Array([0x37, 0x7a, 0xbc, 0xaf, 0x27, 0x1c]);
-const WRAP_VERSION = 1;
-const WRAP_PAD_MIN = 24;
-const WRAP_PAD_MAX = 96;
-const WRAP_PREFIX_LEN = 2;
+const WRAP_HEADER_LEN = 32;
+const WRAP_HEADER_SALT_LEN = 16;
+const WRAP_HEADER_IV_LEN = 12;
+const WRAP_HEADER_KEY = "aAbB4$3#@2!1";
+const WRAP_HEADER_KDF_ITERS = 60000;
 
 // === DOM ===
 const el = (id) => document.getElementById(id);
@@ -98,30 +99,67 @@ function isSevenZ(bytes) {
   return true;
 }
 
-function wrapPayload(archiveBytes) {
-  const padLen = randomInt(WRAP_PAD_MIN, WRAP_PAD_MAX);
-  const pad = crypto.getRandomValues(new Uint8Array(padLen));
-  const prefix = new Uint8Array(WRAP_PREFIX_LEN + padLen);
-  prefix[0] = WRAP_VERSION;
-  prefix[1] = padLen;
-  prefix.set(pad, WRAP_PREFIX_LEN);
-  return u8concat(prefix, archiveBytes);
+async function deriveHeaderKey(salt) {
+  const material = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(WRAP_HEADER_KEY),
+    "PBKDF2",
+    false,
+    ["deriveKey"]
+  );
+  return crypto.subtle.deriveKey(
+    {
+      name: "PBKDF2",
+      salt,
+      iterations: WRAP_HEADER_KDF_ITERS,
+      hash: "SHA-256",
+    },
+    material,
+    { name: "AES-GCM", length: 256 },
+    false,
+    ["encrypt", "decrypt"]
+  );
 }
 
-function unwrapPayload(payload) {
-  if (payload.length <= WRAP_PREFIX_LEN) {
+async function wrapPayload(archiveBytes) {
+  if (archiveBytes.length < WRAP_HEADER_LEN) {
     throw new Error("Invalid payload.");
   }
-  const version = payload[0];
-  if (version !== WRAP_VERSION) {
-    throw new Error("Unsupported payload format.");
-  }
-  const padLen = payload[1];
-  const start = WRAP_PREFIX_LEN + padLen;
-  if (payload.length <= start) {
+  const header = archiveBytes.slice(0, WRAP_HEADER_LEN);
+  const rest = archiveBytes.slice(WRAP_HEADER_LEN);
+  const salt = crypto.getRandomValues(new Uint8Array(WRAP_HEADER_SALT_LEN));
+  const iv = crypto.getRandomValues(new Uint8Array(WRAP_HEADER_IV_LEN));
+  const key = await deriveHeaderKey(salt);
+  const encHeader = new Uint8Array(
+    await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, header)
+  );
+  return u8concat(salt, iv, encHeader, rest);
+}
+
+async function unwrapPayload(payload) {
+  const minLen =
+    WRAP_HEADER_SALT_LEN + WRAP_HEADER_IV_LEN + WRAP_HEADER_LEN + 16;
+  if (payload.length < minLen) {
     throw new Error("Invalid payload.");
   }
-  return payload.slice(start);
+  const salt = payload.slice(0, WRAP_HEADER_SALT_LEN);
+  const ivStart = WRAP_HEADER_SALT_LEN;
+  const ivEnd = ivStart + WRAP_HEADER_IV_LEN;
+  const iv = payload.slice(ivStart, ivEnd);
+  const encHeaderEnd = ivEnd + WRAP_HEADER_LEN + 16;
+  if (payload.length < encHeaderEnd) {
+    throw new Error("Invalid payload.");
+  }
+  const encHeader = payload.slice(ivEnd, encHeaderEnd);
+  const rest = payload.slice(encHeaderEnd);
+  const key = await deriveHeaderKey(salt);
+  const header = new Uint8Array(
+    await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, encHeader)
+  );
+  if (header.length !== WRAP_HEADER_LEN) {
+    throw new Error("Invalid payload.");
+  }
+  return u8concat(header, rest);
 }
 
 function wrapSafetensors(payloadU8) {
@@ -554,7 +592,7 @@ encryptBtn.addEventListener("click", async () => {
       files: selectedFiles,
     });
 
-    const payload = wrapPayload(archive7zBytes);
+    const payload = await wrapPayload(archive7zBytes);
     const safetensorsBytes = wrapSafetensors(payload);
 
     // Save to disk
@@ -598,7 +636,7 @@ decryptBtn.addEventListener("click", async () => {
     const fileBytes = new Uint8Array(await f.arrayBuffer());
 
     const { payload } = parseSafetensors(fileBytes);
-    const archiveBytes = unwrapPayload(payload);
+    const archiveBytes = await unwrapPayload(payload);
     if (!isSevenZ(archiveBytes)) {
       throw new Error("Invalid payload.");
     }
