@@ -1,6 +1,6 @@
 // === CDN (static site friendly) ===
 const SEVENZ_BASE = "https://unpkg.com/7z-wasm@1.2.0/";
-const SEVENZ_ESM  = SEVENZ_BASE + "7zz.es6.js";
+const SEVENZ_ESM = SEVENZ_BASE + "7zz.es6.js";
 const SEVENZ_WASM = SEVENZ_BASE + "7zz.wasm";
 
 // === DOM ===
@@ -28,16 +28,20 @@ let loadedSecret = null; // { name, bytes: Uint8Array, x, list: [{name,size}], n
 let sevenZipInstance = null;
 
 // === Helpers ===
-function setStatus(msg, cls="") {
+function setStatus(msg, cls = "") {
   statusEl.className = "status";
   statusEl.textContent = msg;
   if (cls) statusEl.classList.add(cls);
 }
 
 function formatBytes(n) {
-  const units = ["B","KB","MB","GB","TB"];
-  let i = 0, v = n;
-  while (v >= 1024 && i < units.length-1) { v /= 1024; i++; }
+  const units = ["B", "KB", "MB", "GB", "TB"];
+  let i = 0,
+    v = n;
+  while (v >= 1024 && i < units.length - 1) {
+    v /= 1024;
+    i++;
+  }
   return (i === 0 ? String(v) : v.toFixed(2)) + " " + units[i];
 }
 
@@ -46,11 +50,14 @@ function computeXFromNow() {
   // for(x='',n=new Date/10,n-=n%1;n;n=(n-n%26)/26)x=String.fromCharCode(97+n%26)+x
   let n = Math.floor(Date.now() / 10);
   let x = "";
-  while (n) { x = String.fromCharCode(97 + (n % 26)) + x; n = Math.floor(n / 26); }
+  while (n) {
+    x = String.fromCharCode(97 + (n % 26)) + x;
+    n = Math.floor(n / 26);
+  }
   return x || "a";
 }
 
-function downloadBytes(bytes, filename, mime="application/octet-stream") {
+function downloadBytes(bytes, filename, mime = "application/octet-stream") {
   const blob = new Blob([bytes], { type: mime });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -63,18 +70,27 @@ function downloadBytes(bytes, filename, mime="application/octet-stream") {
 }
 
 function u8concat(...parts) {
-  const total = parts.reduce((s,p)=>s + p.length, 0);
+  const total = parts.reduce((s, p) => s + p.length, 0);
   const out = new Uint8Array(total);
   let o = 0;
-  for (const p of parts) { out.set(p, o); o += p.length; }
+  for (const p of parts) {
+    out.set(p, o);
+    o += p.length;
+  }
   return out;
 }
 
 function wrapSafetensors(payloadU8, metadata = {}) {
   // Safetensors format: 8 bytes (LE u64) header length, then JSON header, then data buffer. :contentReference[oaicite:4]{index=4}
   const headerObj = {
-    "__metadata__": Object.fromEntries(Object.entries(metadata).map(([k,v]) => [String(k), String(v)])),
-    "payload": { dtype: "U8", shape: [payloadU8.length], data_offsets: [0, payloadU8.length] },
+    __metadata__: Object.fromEntries(
+      Object.entries(metadata).map(([k, v]) => [String(k), String(v)])
+    ),
+    payload: {
+      dtype: "U8",
+      shape: [payloadU8.length],
+      data_offsets: [0, payloadU8.length],
+    },
   };
   const headerJson = JSON.stringify(headerObj);
   const headerBytes = new TextEncoder().encode(headerJson);
@@ -87,28 +103,44 @@ function wrapSafetensors(payloadU8, metadata = {}) {
 }
 
 function parseSafetensors(fileBytesU8) {
-  if (fileBytesU8.length < 8) throw new Error("Not a safetensors file (too small).");
-  const dv = new DataView(fileBytesU8.buffer, fileBytesU8.byteOffset, fileBytesU8.byteLength);
+  if (fileBytesU8.length < 8)
+    throw new Error("Not a safetensors file (too small).");
+  const dv = new DataView(
+    fileBytesU8.buffer,
+    fileBytesU8.byteOffset,
+    fileBytesU8.byteLength
+  );
   const headerLen = Number(dv.getBigUint64(0, true));
-  if (!Number.isFinite(headerLen) || headerLen <= 0 || headerLen > fileBytesU8.length - 8) {
+  if (
+    !Number.isFinite(headerLen) ||
+    headerLen <= 0 ||
+    headerLen > fileBytesU8.length - 8
+  ) {
     throw new Error("Invalid safetensors header length.");
   }
   const headerStart = 8;
   const headerEnd = 8 + headerLen;
   const headerBytes = fileBytesU8.slice(headerStart, headerEnd);
   const headerText = new TextDecoder().decode(headerBytes).trim();
-  if (!headerText.startsWith("{")) throw new Error("Invalid safetensors header JSON.");
+  if (!headerText.startsWith("{"))
+    throw new Error("Invalid safetensors header JSON.");
   const header = JSON.parse(headerText);
 
   const tensor = header.payload;
   if (!tensor || tensor.dtype !== "U8" || !Array.isArray(tensor.data_offsets)) {
-    throw new Error("This safetensors file doesn't contain a U8 tensor named 'payload'.");
+    throw new Error(
+      "This safetensors file doesn't contain a U8 tensor named 'payload'."
+    );
   }
   const [begin, end] = tensor.data_offsets;
   const dataBase = headerEnd;
   const absBegin = dataBase + begin;
   const absEnd = dataBase + end;
-  if (absBegin < headerEnd || absEnd > fileBytesU8.length || absEnd < absBegin) {
+  if (
+    absBegin < headerEnd ||
+    absEnd > fileBytesU8.length ||
+    absEnd < absBegin
+  ) {
     throw new Error("Invalid payload offsets.");
   }
   const payload = fileBytesU8.slice(absBegin, absEnd);
@@ -122,7 +154,9 @@ async function ensureSevenZip() {
   const mod = await import(SEVENZ_ESM);
   const SevenZipFactory = mod.default;
 
-  const wasmBinary = new Uint8Array(await (await fetch(SEVENZ_WASM)).arrayBuffer());
+  const wasmBinary = new Uint8Array(
+    await (await fetch(SEVENZ_WASM)).arrayBuffer()
+  );
   const logs = [];
   const sevenZip = await SevenZipFactory({
     wasmBinary,
@@ -132,12 +166,16 @@ async function ensureSevenZip() {
   });
 
   // Create working dir
-  try { sevenZip.FS.mkdir("/work"); } catch {}
+  try {
+    sevenZip.FS.mkdir("/work");
+  } catch {}
   sevenZipInstance = { sevenZip, logs };
   return sevenZipInstance;
 }
 
-function resetLogs(sz) { sz.logs.length = 0; }
+function resetLogs(sz) {
+  sz.logs.length = 0;
+}
 
 function resetWorkDir(sz) {
   const { sevenZip } = sz;
@@ -147,8 +185,12 @@ function resetWorkDir(sz) {
     for (const name of entries) {
       if (name === "." || name === "..") continue;
       const path = "/work/" + name;
-      try { sevenZip.FS.unlink(path); } catch {}
-      try { sevenZip.FS.rmdir(path); } catch {}
+      try {
+        sevenZip.FS.unlink(path);
+      } catch {}
+      try {
+        sevenZip.FS.rmdir(path);
+      } catch {}
     }
   } catch {}
   sevenZip.FS.chdir("/work");
@@ -186,7 +228,16 @@ async function build7zArchiveBytes({ key, x, text, files }) {
   // Create archive with compression=1, password, and encrypted file names.
   // 7z a -t7z -mx=1 -mhe=on -pPASSWORD archive.7z files... :contentReference[oaicite:5]{index=5}
   const archiveName = "payload.7z";
-  const args = ["a", "-t7z", "-mx=1", "-mhe=on", `-p${key}`, "-y", archiveName, ...inNames];
+  const args = [
+    "a",
+    "-t7z",
+    "-mx=1",
+    "-mhe=on",
+    `-p${key}`,
+    "-y",
+    archiveName,
+    ...inNames,
+  ];
 
   sevenZip.callMain(args);
 
@@ -202,7 +253,8 @@ function parse7zListSLT(outputText) {
   let current = {};
   for (const line of lines) {
     if (!line.trim()) {
-      if (current.Path) out.push({ name: current.Path, size: Number(current.Size ?? 0) });
+      if (current.Path)
+        out.push({ name: current.Path, size: Number(current.Size ?? 0) });
       current = {};
       continue;
     }
@@ -213,7 +265,8 @@ function parse7zListSLT(outputText) {
     if (k === "Path") current.Path = v;
     if (k === "Size") current.Size = v;
   }
-  if (current.Path) out.push({ name: current.Path, size: Number(current.Size ?? 0) });
+  if (current.Path)
+    out.push({ name: current.Path, size: Number(current.Size ?? 0) });
   return out;
 }
 
@@ -240,7 +293,9 @@ async function extractSingleFile({ key, archiveBytes, filename }) {
   sevenZip.FS.writeFile("/work/payload.7z", archiveBytes);
 
   // Extract just one file into /work/out
-  try { sevenZip.FS.mkdir("/work/out"); } catch {}
+  try {
+    sevenZip.FS.mkdir("/work/out");
+  } catch {}
   sevenZip.callMain(["e", `-p${key}`, "-y", "payload.7z", filename, "-oout"]);
 
   const data = sevenZip.FS.readFile("/work/out/" + filename);
@@ -253,13 +308,17 @@ function updateSecretBadge() {
     secretBadgeEl.className = "pill";
     return;
   }
-  secretBadgeEl.textContent = `Loaded: ${loadedSecret.name} (${formatBytes(loadedSecret.bytes.length)})`;
+  secretBadgeEl.textContent = `Loaded: ${loadedSecret.name} (${formatBytes(
+    loadedSecret.bytes.length
+  )})`;
   secretBadgeEl.className = "pill ok";
 }
 
 function updateFilesUI() {
-  const total = selectedFiles.reduce((s,f)=>s + f.size, 0);
-  filesSummaryEl.textContent = `${selectedFiles.length} file${selectedFiles.length===1?"":"s"} ƒ?" ${formatBytes(total)}`;
+  const total = selectedFiles.reduce((s, f) => s + f.size, 0);
+  filesSummaryEl.textContent = `${selectedFiles.length} file${
+    selectedFiles.length === 1 ? "" : "s"
+  } ƒ?" ${formatBytes(total)}`;
   filesPillEl.textContent = filesDetailsEl.open ? "Expanded" : "Collapsed";
 
   // Selected list
@@ -267,7 +326,7 @@ function updateFilesUI() {
   if (!selectedFiles.length) {
     selectedListEl.innerHTML = `<div class="small">No files selected.</div>`;
   } else {
-    for (let i=0;i<selectedFiles.length;i++) {
+    for (let i = 0; i < selectedFiles.length; i++) {
       const f = selectedFiles[i];
       const row = document.createElement("div");
       row.className = "item";
@@ -281,7 +340,7 @@ function updateFilesUI() {
         </div>
       `;
       row.querySelector("[data-rm]").addEventListener("click", () => {
-        selectedFiles.splice(i,1);
+        selectedFiles.splice(i, 1);
         updateFilesUI();
       });
       selectedListEl.appendChild(row);
@@ -296,10 +355,12 @@ function updateFilesUI() {
     for (const it of loadedSecret.list) {
       const row = document.createElement("div");
       row.className = "item";
-      const isNote = (it.name === loadedSecret.x);
+      const isNote = it.name === loadedSecret.x;
       row.innerHTML = `
         <div>
-          <div class="name">${escapeHtml(it.name)} ${isNote ? `<span class="pill">note</span>` : ""}</div>
+          <div class="name">${escapeHtml(it.name)} ${
+        isNote ? `<span class="pill">note</span>` : ""
+      }</div>
           <div class="meta">${formatBytes(it.size || 0)}</div>
         </div>
         <div class="right">
@@ -312,7 +373,13 @@ function updateFilesUI() {
 }
 
 function escapeHtml(s) {
-  return String(s).replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+  return String(s).replace(
+    /[&<>"']/g,
+    (c) =>
+      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[
+        c
+      ])
+  );
 }
 
 function requireKey() {
@@ -323,8 +390,8 @@ function requireKey() {
 
 // === UI events ===
 toggleKeyEl.addEventListener("click", () => {
-  keyEl.type = (keyEl.type === "password") ? "text" : "password";
-  toggleKeyEl.textContent = (keyEl.type === "password") ? "dY`?‹,?" : "dYT^";
+  keyEl.type = keyEl.type === "password" ? "text" : "password";
+  toggleKeyEl.textContent = keyEl.type === "password" ? "dY`?‹,?" : "dYT^";
 });
 
 filesDetailsEl.addEventListener("toggle", updateFilesUI);
@@ -348,7 +415,14 @@ secretInputEl.addEventListener("change", async () => {
   updateSecretBadge();
   updateFilesUI();
   if (!f) return;
-  loadedSecret = { name: f.name, bytes: null, x: null, list: [], noteText: "", archive7zBytes: null };
+  loadedSecret = {
+    name: f.name,
+    bytes: null,
+    x: null,
+    list: [],
+    noteText: "",
+    archive7zBytes: null,
+  };
   updateSecretBadge();
 });
 
@@ -360,23 +434,29 @@ encryptBtn.addEventListener("click", async () => {
 
     const key = requireKey();
     const x = computeXFromNow();
-    setStatus(`Encryptingƒ?İ building 7z (mx=1, mhe=on) and wrapping as ${x}.safetensors`);
+    setStatus(
+      `Encryptingƒ?İ building 7z (mx=1, mhe=on) and wrapping as ${x}.safetensors`
+    );
 
     const { bytes: archive7zBytes, logs } = await build7zArchiveBytes({
       key,
       x,
       text: textEl.value,
-      files: selectedFiles
+      files: selectedFiles,
     });
 
     const safetensorsBytes = wrapSafetensors(archive7zBytes, {
-      "hail": "secret-v1",
-      "wrapped": "7z",
-      "note_file": x
+      hail: "secret-v1",
+      wrapped: "7z",
+      note_file: x,
     });
 
     // Save to disk
-    downloadBytes(safetensorsBytes, `${x}.safetensors`, "application/octet-stream");
+    downloadBytes(
+      safetensorsBytes,
+      `${x}.safetensors`,
+      "application/octet-stream"
+    );
 
     // Keep in state so "Download as 7z" can re-use without rebuilding
     loadedSecret = {
@@ -385,7 +465,7 @@ encryptBtn.addEventListener("click", async () => {
       x,
       list: [],
       noteText: textEl.value,
-      archive7zBytes
+      archive7zBytes,
     };
     updateSecretBadge();
     updateFilesUI();
@@ -415,13 +495,19 @@ decryptBtn.addEventListener("click", async () => {
 
     setStatus("Parsing safetensors and extracting payloadƒ?İ");
     const { payload } = parseSafetensors(fileBytes);
-    const x = f.name.endsWith(".safetensors") ? f.name.slice(0, -".safetensors".length) : "x";
+    const x = f.name.endsWith(".safetensors")
+      ? f.name.slice(0, -".safetensors".length)
+      : "x";
 
     setStatus("Listing archive files (no extraction)ƒ?İ");
     const { list, raw } = await list7zFiles({ key, archiveBytes: payload });
 
     setStatus("Extracting note file onlyƒ?İ");
-    const noteText = await extractSingleFile({ key, archiveBytes: payload, filename: x });
+    const noteText = await extractSingleFile({
+      key,
+      archiveBytes: payload,
+      filename: x,
+    });
 
     loadedSecret = {
       name: f.name,
@@ -429,7 +515,7 @@ decryptBtn.addEventListener("click", async () => {
       x,
       list,
       noteText,
-      archive7zBytes: payload
+      archive7zBytes: payload,
     };
 
     textEl.value = noteText;
@@ -457,7 +543,11 @@ download7zBtn.addEventListener("click", async () => {
     // If we already have the archive bytes (from decrypt or encrypt), use them.
     if (loadedSecret?.archive7zBytes) {
       const name = (loadedSecret.x || "secret") + ".7z";
-      downloadBytes(loadedSecret.archive7zBytes, name, "application/x-7z-compressed");
+      downloadBytes(
+        loadedSecret.archive7zBytes,
+        name,
+        "application/x-7z-compressed"
+      );
       setStatus(`Downloaded existing archive as ${name}.`, "ok");
       return;
     }
@@ -469,10 +559,13 @@ download7zBtn.addEventListener("click", async () => {
       key,
       x,
       text: textEl.value,
-      files: selectedFiles
+      files: selectedFiles,
     });
     downloadBytes(archive7zBytes, `${x}.7z`, "application/x-7z-compressed");
-    setStatus(`Downloaded ${x}.7z\n\n7z-wasm output:\n${logs.join("\n")}`, "ok");
+    setStatus(
+      `Downloaded ${x}.7z\n\n7z-wasm output:\n${logs.join("\n")}`,
+      "ok"
+    );
   } catch (e) {
     setStatus(`Error: ${e?.message || e}`, "bad");
   } finally {

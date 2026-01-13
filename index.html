@@ -1,90 +1,118 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Hail Secret Vault</title>
-  <link rel="stylesheet" href="styles.css" />
-</head>
-<body>
-  <div class="wrap">
-    <section class="card">
-      <div class="title">Secret Vault (client-side)</div>
-      <div class="sub">
-        Builds a password-protected <span class="mono">.7z</span> and (optionally) wraps it in a valid <span class="mono">.safetensors</span> container.
-        No uploads — everything stays in your browser.
-      </div>
-
-      <div class="grid">
-        <div>
-          <label for="key">Key</label>
-          <div class="row">
-            <input id="key" type="password" placeholder="Enter key..." autocomplete="new-password" />
-            <button class="btn" id="toggleKey" title="Show/Hide key">👁️</button>
-          </div>
-          <div class="hint">Tip: use a long passphrase. Filenames are encrypted using <span class="mono">-mhe=on</span>.</div>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Hail Secret Vault</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="wrap">
+      <section class="card">
+        <div class="title">Secret Vault (client-side)</div>
+        <div class="sub">
+          Builds a password-protected <span class="mono">.7z</span> and
+          (optionally) wraps it in a valid
+          <span class="mono">.safetensors</span> container. No uploads —
+          everything stays in your browser.
         </div>
 
-        <div>
-          <label for="secretInput">Upload Secret (x.safetensors)</label>
-          <div class="row">
-            <input id="secretInput" type="file" accept=".safetensors,application/octet-stream" />
-            <span class="pill" id="secretBadge">No secret loaded</span>
-          </div>
-          <div class="hint">Decrypt will list filenames + sizes and only extract the note file (<span class="mono">x</span>) into the text box.</div>
-        </div>
-      </div>
-
-      <div style="margin-top:12px;">
-        <label for="text">Text</label>
-        <textarea id="text" placeholder="Type secret text here..."></textarea>
-      </div>
-
-      <details id="filesDetails">
-        <summary>
-          <div class="summary-left">
-            <div class="summary-title">Files</div>
-            <div class="summary-meta" id="filesSummary">0 files — 0 B</div>
-          </div>
-          <div class="pill" id="filesPill">Collapsed</div>
-        </summary>
-        <div class="details-body">
-          <div class="row" style="justify-content:space-between;">
-            <div>
-              <label style="margin:0 0 6px 0;">Add file(s)</label>
-              <input id="fileInput" type="file" multiple />
-              <div class="hint">Selected files will be added to the archive alongside the note file named <span class="mono">x</span>.</div>
+        <div class="grid">
+          <div>
+            <label for="key">Key</label>
+            <div class="row">
+              <input
+                id="key"
+                type="password"
+                placeholder="Enter key..."
+                autocomplete="new-password"
+              />
+              <button class="btn" id="toggleKey" title="Show/Hide key">
+                👁️
+              </button>
             </div>
-            <div style="display:flex; gap:10px; align-items:flex-end;">
-              <button class="btn danger" id="clearFiles">Delete all selected</button>
+            <div class="hint">
+              Tip: use a long passphrase. Filenames are encrypted using
+              <span class="mono">-mhe=on</span>.
             </div>
           </div>
 
-          <div class="hr"></div>
-
-          <div class="small">Selected for encryption</div>
-          <div class="list" id="selectedList"></div>
-
-          <div class="hr"></div>
-
-          <div class="small">From loaded secret (not extracted)</div>
-          <div class="list" id="secretList"></div>
+          <div>
+            <label for="secretInput">Upload Secret (x.safetensors)</label>
+            <div class="row">
+              <input
+                id="secretInput"
+                type="file"
+                accept=".safetensors,application/octet-stream"
+              />
+              <span class="pill" id="secretBadge">No secret loaded</span>
+            </div>
+            <div class="hint">
+              Decrypt will list filenames + sizes and only extract the note file
+              (<span class="mono">x</span>) into the text box.
+            </div>
+          </div>
         </div>
-      </details>
 
-      <div class="footer">
-        <button class="btn" id="download7z">Download as 7z</button>
-        <button class="btn primary" id="encrypt">Encrypt → x.safetensors</button>
-        <button class="btn primary" id="decrypt">Decrypt</button>
-      </div>
+        <div style="margin-top: 12px">
+          <label for="text">Text</label>
+          <textarea id="text" placeholder="Type secret text here..."></textarea>
+        </div>
 
-      <div class="status" id="status">Idle.</div>
-      <div class="hint">
-        <span class="warn">Important:</span> This tool does not try to “hide” file types or strip signatures. It uses standard 7z + standard safetensors wrapping.
-      </div>
-    </section>
-  </div>
+        <details id="filesDetails">
+          <summary>
+            <div class="summary-left">
+              <div class="summary-title">Files</div>
+              <div class="summary-meta" id="filesSummary">0 files — 0 B</div>
+            </div>
+            <div class="pill" id="filesPill">Collapsed</div>
+          </summary>
+          <div class="details-body">
+            <div class="row" style="justify-content: space-between">
+              <div>
+                <label style="margin: 0 0 6px 0">Add file(s)</label>
+                <input id="fileInput" type="file" multiple />
+                <div class="hint">
+                  Selected files will be added to the archive alongside the note
+                  file named <span class="mono">x</span>.
+                </div>
+              </div>
+              <div style="display: flex; gap: 10px; align-items: flex-end">
+                <button class="btn danger" id="clearFiles">
+                  Delete all selected
+                </button>
+              </div>
+            </div>
 
-<script type="module" src="app.js"></script>
-</body>
+            <div class="hr"></div>
+
+            <div class="small">Selected for encryption</div>
+            <div class="list" id="selectedList"></div>
+
+            <div class="hr"></div>
+
+            <div class="small">From loaded secret (not extracted)</div>
+            <div class="list" id="secretList"></div>
+          </div>
+        </details>
+
+        <div class="footer">
+          <button class="btn" id="download7z">Download as 7z</button>
+          <button class="btn primary" id="encrypt">
+            Encrypt → x.safetensors
+          </button>
+          <button class="btn primary" id="decrypt">Decrypt</button>
+        </div>
+
+        <div class="status" id="status">Idle.</div>
+        <div class="hint">
+          <span class="warn">Important:</span> This tool does not try to “hide”
+          file types or strip signatures. It uses standard 7z + standard
+          safetensors wrapping.
+        </div>
+      </section>
+    </div>
+
+    <script type="module" src="app.js"></script>
+  </body>
 </html>
