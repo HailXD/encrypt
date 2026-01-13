@@ -20,7 +20,6 @@ const clearFilesEl = el("clearFiles");
 const encryptBtn = el("encrypt");
 const decryptBtn = el("decrypt");
 const download7zBtn = el("download7z");
-const statusEl = el("status");
 
 // === State ===
 let selectedFiles = [];
@@ -28,12 +27,6 @@ let loadedSecret = null; // { name, bytes: Uint8Array, x, list: [{name,size}], n
 let sevenZipInstance = null;
 
 // === Helpers ===
-function setStatus(msg, cls = "") {
-  statusEl.className = "status";
-  statusEl.textContent = msg;
-  if (cls) statusEl.classList.add(cls);
-}
-
 function formatBytes(n) {
   const units = ["B", "KB", "MB", "GB", "TB"];
   let i = 0,
@@ -43,6 +36,11 @@ function formatBytes(n) {
     i++;
   }
   return (i === 0 ? String(v) : v.toFixed(2)) + " " + units[i];
+}
+
+function reportError(err) {
+  console.error(err);
+  alert(String(err?.message || err));
 }
 
 function computeXFromNow() {
@@ -150,7 +148,6 @@ function parseSafetensors(fileBytesU8) {
 async function ensureSevenZip() {
   if (sevenZipInstance) return sevenZipInstance;
 
-  setStatus("Loading 7z-wasmƒ?İ (first time can take a moment)");
   const mod = await import(SEVENZ_ESM);
   const SevenZipFactory = mod.default;
 
@@ -212,7 +209,7 @@ async function build7zArchiveBytes({ key, x, text, files }) {
   resetLogs(sz);
   resetWorkDir(sz);
 
-  const { sevenZip, logs } = sz;
+  const { sevenZip } = sz;
 
   // Write note file "x"
   sevenZip.FS.writeFile("/work/" + x, new TextEncoder().encode(text ?? ""));
@@ -243,7 +240,7 @@ async function build7zArchiveBytes({ key, x, text, files }) {
 
   // Read archive bytes
   const out = sevenZip.FS.readFile("/work/" + archiveName);
-  return { bytes: out, logs: logs.slice() };
+  return { bytes: out };
 }
 
 function parse7zListSLT(outputText) {
@@ -281,7 +278,7 @@ async function list7zFiles({ key, archiveBytes }) {
   sevenZip.callMain(["l", "-slt", `-p${key}`, "-y", "payload.7z"]);
 
   const text = logs.join("\n");
-  return { list: parse7zListSLT(text), raw: text };
+  return { list: parse7zListSLT(text) };
 }
 
 async function extractSingleFile({ key, archiveBytes, filename }) {
@@ -318,7 +315,7 @@ function updateFilesUI() {
   const total = selectedFiles.reduce((s, f) => s + f.size, 0);
   filesSummaryEl.textContent = `${selectedFiles.length} file${
     selectedFiles.length === 1 ? "" : "s"
-  } ƒ?" ${formatBytes(total)}`;
+  } ${formatBytes(total)}`;
   filesPillEl.textContent = filesDetailsEl.open ? "Expanded" : "Collapsed";
 
   // Selected list
@@ -434,11 +431,8 @@ encryptBtn.addEventListener("click", async () => {
 
     const key = requireKey();
     const x = computeXFromNow();
-    setStatus(
-      `Encryptingƒ?İ building 7z (mx=1, mhe=on) and wrapping as ${x}.safetensors`
-    );
 
-    const { bytes: archive7zBytes, logs } = await build7zArchiveBytes({
+    const { bytes: archive7zBytes } = await build7zArchiveBytes({
       key,
       x,
       text: textEl.value,
@@ -469,17 +463,14 @@ encryptBtn.addEventListener("click", async () => {
     };
     updateSecretBadge();
     updateFilesUI();
-
-    setStatus(`Done.\n\n7z-wasm output:\n${logs.join("\n")}`, "ok");
   } catch (e) {
-    setStatus(`Error: ${e?.message || e}`, "bad");
+    reportError(e);
   } finally {
     encryptBtn.disabled = false;
     decryptBtn.disabled = false;
     download7zBtn.disabled = false;
   }
 });
-
 decryptBtn.addEventListener("click", async () => {
   try {
     encryptBtn.disabled = true;
@@ -490,19 +481,15 @@ decryptBtn.addEventListener("click", async () => {
     const f = secretInputEl.files?.[0];
     if (!f) throw new Error("Upload a .safetensors secret first.");
 
-    setStatus("Reading secretƒ?İ");
     const fileBytes = new Uint8Array(await f.arrayBuffer());
 
-    setStatus("Parsing safetensors and extracting payloadƒ?İ");
     const { payload } = parseSafetensors(fileBytes);
     const x = f.name.endsWith(".safetensors")
       ? f.name.slice(0, -".safetensors".length)
       : "x";
 
-    setStatus("Listing archive files (no extraction)ƒ?İ");
-    const { list, raw } = await list7zFiles({ key, archiveBytes: payload });
+    const { list } = await list7zFiles({ key, archiveBytes: payload });
 
-    setStatus("Extracting note file onlyƒ?İ");
     const noteText = await extractSingleFile({
       key,
       archiveBytes: payload,
@@ -521,17 +508,14 @@ decryptBtn.addEventListener("click", async () => {
     textEl.value = noteText;
     updateSecretBadge();
     updateFilesUI();
-
-    setStatus(`Decrypted note file: ${x}\n\nArchive listing:\n${raw}`, "ok");
   } catch (e) {
-    setStatus(`Error: ${e?.message || e}`, "bad");
+    reportError(e);
   } finally {
     encryptBtn.disabled = false;
     decryptBtn.disabled = false;
     download7zBtn.disabled = false;
   }
 });
-
 download7zBtn.addEventListener("click", async () => {
   try {
     encryptBtn.disabled = true;
@@ -548,33 +532,29 @@ download7zBtn.addEventListener("click", async () => {
         name,
         "application/x-7z-compressed"
       );
-      setStatus(`Downloaded existing archive as ${name}.`, "ok");
       return;
     }
 
     // Otherwise build on the spot from current UI state.
     const x = computeXFromNow();
-    setStatus("Building 7z on the spotƒ?İ");
-    const { bytes: archive7zBytes, logs } = await build7zArchiveBytes({
+    const { bytes: archive7zBytes } = await build7zArchiveBytes({
       key,
       x,
       text: textEl.value,
       files: selectedFiles,
     });
     downloadBytes(archive7zBytes, `${x}.7z`, "application/x-7z-compressed");
-    setStatus(
-      `Downloaded ${x}.7z\n\n7z-wasm output:\n${logs.join("\n")}`,
-      "ok"
-    );
   } catch (e) {
-    setStatus(`Error: ${e?.message || e}`, "bad");
+    reportError(e);
   } finally {
     encryptBtn.disabled = false;
     decryptBtn.disabled = false;
     download7zBtn.disabled = false;
   }
 });
-
 // Init
 updateSecretBadge();
 updateFilesUI();
+
+
+
