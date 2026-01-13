@@ -721,6 +721,7 @@ download7zBtn.addEventListener("click", async () => {
   }
 });
 // Init
+textEl.value = "";
 updateSecretBadge();
 updateFilesUI();
 
