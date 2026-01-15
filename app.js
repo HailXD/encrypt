@@ -25,12 +25,14 @@ const clearFilesEl = el("clearFiles");
 const encryptBtn = el("encrypt");
 const decryptBtn = el("decrypt");
 const download7zBtn = el("download7z");
+const orderedToggleEl = el("orderedToggle");
 
 // === State ===
 let selectedFiles = [];
 let loadedSecret = null; // { name, bytes: Uint8Array, x, list: [{name,size}], noteText, archive7zBytes }
 let sevenZipInstance = null;
 let secretFileCache = new Map();
+let orderedEnabled = false;
 
 // === Helpers ===
 function formatBytes(n) {
@@ -290,6 +292,23 @@ function sanitizeName(name) {
   return name.replace(/[\\/]/g, "_");
 }
 
+function stripOrderPrefix(name) {
+  const m = String(name).match(/^\d+_(.+)$/);
+  return m ? m[1] : String(name);
+}
+
+function getBaseName(item) {
+  return item?.baseName || item?.name || "";
+}
+
+function getOrderedName(item, index) {
+  return `${index + 1}_${getBaseName(item)}`;
+}
+
+function getEffectiveName(item, index) {
+  return orderedEnabled ? getOrderedName(item, index) : item.name;
+}
+
 async function build7zArchiveBytes({ key, x, text, files }) {
   const sz = await ensureSevenZip();
   resetLogs(sz);
@@ -302,8 +321,9 @@ async function build7zArchiveBytes({ key, x, text, files }) {
 
   // Write selected files
   const inNames = [x];
-  for (const f of files) {
-    const n = sanitizeName(f.name);
+  for (let i = 0; i < files.length; i++) {
+    const f = files[i];
+    const n = sanitizeName(getEffectiveName(f, i));
     if (f?.source === "local") {
       await writeFileToFS(sz, f.file, n);
     } else if (f?.source === "secret") {
@@ -434,9 +454,10 @@ function updateFilesUI() {
     0
   );
   const decodedNote = secretCount ? ` (${secretCount} decoded)` : "";
+  const orderedNote = orderedEnabled ? " ordered" : "";
   filesSummaryEl.textContent = `${selectedFiles.length} file${
     selectedFiles.length === 1 ? "" : "s"
-  } ${formatBytes(total)}${decodedNote}`;
+  } ${formatBytes(total)}${decodedNote}${orderedNote}`;
   filesPillEl.textContent = filesDetailsEl.open ? "Expanded" : "Collapsed";
 
   // Selected list
@@ -450,23 +471,55 @@ function updateFilesUI() {
       row.className = "item";
       const sourceTag =
         f.source === "secret" ? `<span class="pill tag">decoded</span>` : "";
+      const displayName = orderedEnabled
+        ? getOrderedName(f, i)
+        : String(f.name || "");
+      const moveControls = orderedEnabled
+        ? `
+        <button class="btn ghost tiny" data-up="${i}" ${
+            i === 0 ? "disabled" : ""
+          }>Up</button>
+        <button class="btn ghost tiny" data-down="${i}" ${
+            i === selectedFiles.length - 1 ? "disabled" : ""
+          }>Down</button>
+      `
+        : "";
       row.innerHTML = `
         <div>
-          <div class="name">${escapeHtml(f.name)} ${sourceTag}</div>
+          <div class="name">${escapeHtml(displayName)} ${sourceTag}</div>
           <div class="meta">${formatBytes(f.size || 0)}</div>
         </div>
         <div class="right">
+          ${moveControls}
           <button class="btn ghost" data-dl="${i}">Download</button>
           <button class="btn danger" data-rm="${i}">Remove</button>
         </div>
       `;
+      const upBtn = row.querySelector("[data-up]");
+      if (upBtn) {
+        upBtn.addEventListener("click", () => {
+          if (i <= 0) return;
+          const [item] = selectedFiles.splice(i, 1);
+          selectedFiles.splice(i - 1, 0, item);
+          updateFilesUI();
+        });
+      }
+      const downBtn = row.querySelector("[data-down]");
+      if (downBtn) {
+        downBtn.addEventListener("click", () => {
+          if (i >= selectedFiles.length - 1) return;
+          const [item] = selectedFiles.splice(i, 1);
+          selectedFiles.splice(i + 1, 0, item);
+          updateFilesUI();
+        });
+      }
       row.querySelector("[data-rm]").addEventListener("click", () => {
         selectedFiles.splice(i, 1);
         updateFilesUI();
       });
       row.querySelector("[data-dl]").addEventListener("click", async () => {
         try {
-          await downloadSelectedItem(selectedFiles[i]);
+          await downloadSelectedItem(selectedFiles[i], i);
         } catch (e) {
           reportError(e);
         }
@@ -508,13 +561,17 @@ async function getSecretFileBytes(key, filename) {
   return bytes;
 }
 
-async function downloadSelectedItem(item) {
+async function downloadSelectedItem(item, index) {
   if (!item) return;
+  const indexValue = Number.isInteger(index)
+    ? index
+    : selectedFiles.indexOf(item);
+  const safeIndex = indexValue < 0 ? 0 : indexValue;
   if (item.source === "local") {
     const bytes = new Uint8Array(await item.file.arrayBuffer());
     downloadBytes(
       bytes,
-      sanitizeName(item.name),
+      sanitizeName(getEffectiveName(item, safeIndex)),
       item.file.type || "application/octet-stream"
     );
     return;
@@ -522,7 +579,11 @@ async function downloadSelectedItem(item) {
   if (item.source === "secret") {
     const key = requireKey();
     const bytes = await getSecretFileBytes(key, item.name);
-    downloadBytes(bytes, sanitizeName(item.name), "application/octet-stream");
+    downloadBytes(
+      bytes,
+      sanitizeName(getEffectiveName(item, safeIndex)),
+      "application/octet-stream"
+    );
     return;
   }
   throw new Error("Unknown file source.");
@@ -535,6 +596,10 @@ toggleKeyEl.addEventListener("click", () => {
 });
 
 filesDetailsEl.addEventListener("toggle", updateFilesUI);
+orderedToggleEl.addEventListener("change", () => {
+  orderedEnabled = orderedToggleEl.checked;
+  updateFilesUI();
+});
 
 fileInputEl.addEventListener("change", () => {
   if (fileInputEl.files?.length) {
@@ -543,6 +608,7 @@ fileInputEl.addEventListener("change", () => {
         source: "local",
         file,
         name: file.name,
+        baseName: file.name,
         size: file.size,
       }))
     );
@@ -669,6 +735,7 @@ decryptBtn.addEventListener("click", async () => {
       selectedFiles.push({
         source: "secret",
         name: it.name,
+        baseName: stripOrderPrefix(it.name),
         size: it.size || 0,
       });
     }
@@ -693,7 +760,7 @@ download7zBtn.addEventListener("click", async () => {
     const key = requireKey();
 
     // If we already have the archive bytes (from decrypt or encrypt), use them.
-    if (loadedSecret?.archive7zBytes) {
+    if (loadedSecret?.archive7zBytes && !orderedEnabled) {
       const name = (loadedSecret.x || "secret") + ".7z";
       downloadBytes(
         loadedSecret.archive7zBytes,
@@ -722,6 +789,7 @@ download7zBtn.addEventListener("click", async () => {
 });
 // Init
 textEl.value = "";
+orderedEnabled = orderedToggleEl.checked;
 updateSecretBadge();
 updateFilesUI();
 

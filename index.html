@@ -50,11 +50,15 @@
         </div>
 
         <div class="files-add">
-          <div class="row" style="justify-content: space-between; align-items: flex-end">
+          <div class="row files-controls" style="justify-content: space-between; align-items: flex-end">
             <div>
               <label for="fileInput">Add file(s)</label>
               <input id="fileInput" type="file" multiple />
             </div>
+            <label class="check" for="orderedToggle">
+              <input id="orderedToggle" type="checkbox" />
+              <span>Ordered</span>
+            </label>
             <button class="btn danger" id="clearFiles">
               Delete all selected
             </button>
