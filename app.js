@@ -26,6 +26,13 @@ const encryptBtn = el("encrypt");
 const decryptBtn = el("decrypt");
 const download7zBtn = el("download7z");
 const orderedToggleEl = el("orderedToggle");
+const tabButtons = Array.from(document.querySelectorAll("[data-tab]"));
+const tabPanels = Array.from(document.querySelectorAll("[data-tab-panel]"));
+const textModeInputEl = el("textModeInput");
+const textModeOutputEl = el("textModeOutput");
+const textEncryptBtn = el("textEncrypt");
+const textDecryptBtn = el("textDecrypt");
+const textUseOutputBtn = el("textUseOutput");
 
 // === State ===
 let selectedFiles = [];
@@ -61,6 +68,59 @@ function computeXFromNow() {
     n = Math.floor(n / 26);
   }
   return x || "a";
+}
+
+function bytesToBase64(bytes) {
+  let binary = "";
+  const chunkSize = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    const chunk = bytes.subarray(i, i + chunkSize);
+    binary += String.fromCharCode(...chunk);
+  }
+  return btoa(binary);
+}
+
+function base64ToBytes(text) {
+  const clean = String(text || "").replace(/\s+/g, "");
+  if (!clean) {
+    throw new Error("Input text is required.");
+  }
+  let binary = "";
+  try {
+    binary = atob(clean);
+  } catch {
+    throw new Error("Input text is not valid Base64.");
+  }
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes;
+}
+
+function setActiveTab(tab) {
+  for (const button of tabButtons) {
+    const active = button.dataset.tab === tab;
+    button.classList.toggle("active", active);
+    button.setAttribute("aria-selected", String(active));
+  }
+  for (const panel of tabPanels) {
+    const active = panel.dataset.tabPanel === tab;
+    panel.classList.toggle("active", active);
+    panel.hidden = !active;
+  }
+}
+
+function setSafetensorsBusy(disabled) {
+  encryptBtn.disabled = disabled;
+  decryptBtn.disabled = disabled;
+  download7zBtn.disabled = disabled;
+}
+
+function setTextModeBusy(disabled) {
+  textEncryptBtn.disabled = disabled;
+  textDecryptBtn.disabled = disabled;
+  textUseOutputBtn.disabled = disabled;
 }
 
 function downloadBytes(bytes, filename, mime = "application/octet-stream") {
@@ -589,11 +649,35 @@ async function downloadSelectedItem(item, index) {
   throw new Error("Unknown file source.");
 }
 
+async function decryptWrappedText(key, inputText) {
+  const payload = base64ToBytes(inputText);
+  const archiveBytes = await unwrapPayload(payload);
+  if (!isSevenZ(archiveBytes)) {
+    throw new Error("Invalid payload.");
+  }
+  const { list } = await list7zFiles({ key, archiveBytes });
+  const file = list.find((item) => item.name && item.name !== "payload.7z");
+  if (!file) {
+    throw new Error("No text payload found.");
+  }
+  return extractSingleFile({
+    key,
+    archiveBytes,
+    filename: file.name,
+  });
+}
+
 // === UI events ===
 toggleKeyEl.addEventListener("click", () => {
   keyEl.type = keyEl.type === "password" ? "text" : "password";
   toggleKeyEl.textContent = keyEl.type === "password" ? "Show" : "Hide";
 });
+
+for (const button of tabButtons) {
+  button.addEventListener("click", () => {
+    setActiveTab(button.dataset.tab || "safetensors");
+  });
+}
 
 filesDetailsEl.addEventListener("toggle", updateFilesUI);
 orderedToggleEl.addEventListener("change", () => {
@@ -644,9 +728,7 @@ secretInputEl.addEventListener("change", async () => {
 
 encryptBtn.addEventListener("click", async () => {
   try {
-    encryptBtn.disabled = true;
-    decryptBtn.disabled = true;
-    download7zBtn.disabled = true;
+    setSafetensorsBusy(true);
 
     const key = requireKey();
     const x = computeXFromNow();
@@ -684,16 +766,12 @@ encryptBtn.addEventListener("click", async () => {
   } catch (e) {
     reportError(e);
   } finally {
-    encryptBtn.disabled = false;
-    decryptBtn.disabled = false;
-    download7zBtn.disabled = false;
+    setSafetensorsBusy(false);
   }
 });
 decryptBtn.addEventListener("click", async () => {
   try {
-    encryptBtn.disabled = true;
-    decryptBtn.disabled = true;
-    download7zBtn.disabled = true;
+    setSafetensorsBusy(true);
 
     const key = requireKey();
     const f = secretInputEl.files?.[0];
@@ -746,16 +824,12 @@ decryptBtn.addEventListener("click", async () => {
   } catch (e) {
     reportError(e);
   } finally {
-    encryptBtn.disabled = false;
-    decryptBtn.disabled = false;
-    download7zBtn.disabled = false;
+    setSafetensorsBusy(false);
   }
 });
 download7zBtn.addEventListener("click", async () => {
   try {
-    encryptBtn.disabled = true;
-    decryptBtn.disabled = true;
-    download7zBtn.disabled = true;
+    setSafetensorsBusy(true);
 
     const key = requireKey();
 
@@ -782,14 +856,50 @@ download7zBtn.addEventListener("click", async () => {
   } catch (e) {
     reportError(e);
   } finally {
-    encryptBtn.disabled = false;
-    decryptBtn.disabled = false;
-    download7zBtn.disabled = false;
+    setSafetensorsBusy(false);
+  }
+});
+textUseOutputBtn.addEventListener("click", () => {
+  textModeInputEl.value = textModeOutputEl.value;
+});
+textEncryptBtn.addEventListener("click", async () => {
+  try {
+    setTextModeBusy(true);
+
+    const key = requireKey();
+    const x = computeXFromNow();
+    const { bytes: archive7zBytes } = await build7zArchiveBytes({
+      key,
+      x,
+      text: textModeInputEl.value,
+      files: [],
+    });
+    const payload = await wrapPayload(archive7zBytes);
+    textModeOutputEl.value = bytesToBase64(payload);
+  } catch (e) {
+    reportError(e);
+  } finally {
+    setTextModeBusy(false);
+  }
+});
+textDecryptBtn.addEventListener("click", async () => {
+  try {
+    setTextModeBusy(true);
+
+    const key = requireKey();
+    textModeOutputEl.value = await decryptWrappedText(key, textModeInputEl.value);
+  } catch (e) {
+    reportError(e);
+  } finally {
+    setTextModeBusy(false);
   }
 });
 // Init
 textEl.value = "";
+textModeInputEl.value = "";
+textModeOutputEl.value = "";
 orderedEnabled = orderedToggleEl.checked;
+setActiveTab("safetensors");
 updateSecretBadge();
 updateFilesUI();
 

@@ -11,82 +11,146 @@
       <section class="card">
         <div class="title">Vault</div>
 
-        <div class="grid">
-          <div>
-            <label for="key">Key</label>
-            <div class="row">
-              <div class="input-wrap">
-                <input
-                  id="key"
-                  type="password"
-                  placeholder="Enter key..."
-                  autocomplete="new-password"
-                />
-              </div>
-            </div>
-            <div class="row meta-row">
-              <button class="input-toggle" id="toggleKey" title="Show/Hide key">
-                Show
-              </button>
-              <span class="pill" id="secretBadge">No secret loaded</span>
-            </div>
-          </div>
-
-          <div>
-            <label for="secretInput">Upload Secret</label>
-            <div class="row secret-row">
+        <div>
+          <label for="key">Key</label>
+          <div class="row">
+            <div class="input-wrap">
               <input
-                id="secretInput"
-                type="file"
-                accept=".safetensors,application/octet-stream"
+                id="key"
+                type="password"
+                placeholder="Enter key..."
+                autocomplete="new-password"
               />
             </div>
           </div>
-        </div>
-
-        <div style="margin-top: 12px">
-          <label for="text">Text</label>
-          <textarea id="text" placeholder="Type secret text here..."></textarea>
-        </div>
-
-        <div class="files-add">
-          <div class="row files-controls" style="justify-content: space-between; align-items: flex-end">
-            <div>
-              <label for="fileInput">Add file(s)</label>
-              <input id="fileInput" type="file" multiple />
-            </div>
-            <label class="check" for="orderedToggle">
-              <input id="orderedToggle" type="checkbox" />
-              <span>Ordered</span>
-            </label>
-            <button class="btn danger" id="clearFiles">
-              Delete all selected
+          <div class="row meta-row">
+            <button class="input-toggle" id="toggleKey" title="Show/Hide key">
+              Show
             </button>
+            <span class="pill" id="secretBadge">No secret loaded</span>
           </div>
         </div>
 
-        <details id="filesDetails">
-          <summary>
-            <div class="summary-left">
-              <div class="summary-title">Files</div>
-              <div class="summary-meta" id="filesSummary">0 files — 0 B</div>
-            </div>
-            <div class="pill" id="filesPill">Collapsed</div>
-          </summary>
-          <div class="details-body">
-            <div class="small">Selected for encryption</div>
-            <div class="list" id="selectedList"></div>
-          </div>
-        </details>
-
-        <div class="footer">
-          <button class="btn" id="download7z">Download as 7z</button>
-          <button class="btn primary" id="encrypt">
-            Download as Safetensors
+        <div class="tabs" role="tablist" aria-label="Vault modes">
+          <button
+            class="tab-btn active"
+            id="tabSafetensors"
+            type="button"
+            role="tab"
+            aria-selected="true"
+            aria-controls="panelSafetensors"
+            data-tab="safetensors"
+          >
+            Safetensors
           </button>
-          <button class="btn primary" id="decrypt">Decrypt</button>
+          <button
+            class="tab-btn"
+            id="tabText"
+            type="button"
+            role="tab"
+            aria-selected="false"
+            aria-controls="panelText"
+            data-tab="text"
+          >
+            Text
+          </button>
         </div>
 
+        <section
+          class="tab-panel active"
+          id="panelSafetensors"
+          role="tabpanel"
+          aria-labelledby="tabSafetensors"
+          data-tab-panel="safetensors"
+        >
+          <div class="grid">
+            <div>
+              <label for="secretInput">Upload Secret</label>
+              <div class="row secret-row">
+                <input
+                  id="secretInput"
+                  type="file"
+                  accept=".safetensors,application/octet-stream"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div style="margin-top: 12px">
+            <label for="text">Text</label>
+            <textarea id="text" placeholder="Type secret text here..."></textarea>
+          </div>
+
+          <div class="files-add">
+            <div class="row files-controls" style="justify-content: space-between; align-items: flex-end">
+              <div>
+                <label for="fileInput">Add file(s)</label>
+                <input id="fileInput" type="file" multiple />
+              </div>
+              <label class="check" for="orderedToggle">
+                <input id="orderedToggle" type="checkbox" />
+                <span>Ordered</span>
+              </label>
+              <button class="btn danger" id="clearFiles">
+                Delete all selected
+              </button>
+            </div>
+          </div>
+
+          <details id="filesDetails">
+            <summary>
+              <div class="summary-left">
+                <div class="summary-title">Files</div>
+                <div class="summary-meta" id="filesSummary">0 files - 0 B</div>
+              </div>
+              <div class="pill" id="filesPill">Collapsed</div>
+            </summary>
+            <div class="details-body">
+              <div class="small">Selected for encryption</div>
+              <div class="list" id="selectedList"></div>
+            </div>
+          </details>
+
+          <div class="footer">
+            <button class="btn" id="download7z">Download as 7z</button>
+            <button class="btn primary" id="encrypt">
+              Download as Safetensors
+            </button>
+            <button class="btn primary" id="decrypt">Decrypt</button>
+          </div>
+        </section>
+
+        <section
+          class="tab-panel"
+          id="panelText"
+          role="tabpanel"
+          aria-labelledby="tabText"
+          data-tab-panel="text"
+          hidden
+        >
+          <div class="text-grid">
+            <div>
+              <label for="textModeInput">Input Text</label>
+              <textarea
+                id="textModeInput"
+                placeholder="Enter plain text to encrypt or encoded text to decrypt..."
+              ></textarea>
+            </div>
+            <div>
+              <label for="textModeOutput">Output Text</label>
+              <textarea
+                id="textModeOutput"
+                placeholder="Encrypted or decrypted output..."
+              ></textarea>
+            </div>
+          </div>
+
+          <div class="footer">
+            <button class="btn" id="textUseOutput">Use output as input</button>
+            <button class="btn primary" id="textEncrypt">Encrypt</button>
+            <button class="btn primary" id="textDecrypt">Decrypt</button>
+          </div>
+        </section>
       </section>
     </div>
 
